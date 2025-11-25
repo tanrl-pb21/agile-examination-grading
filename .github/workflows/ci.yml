@@ -2,71 +2,57 @@ name: Backend CI Pipeline
 
 on:
   push:
-    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main", "master" ]
 
 jobs:
 
   # =====================================================
-  #  Shared Job: Install dependencies once for all jobs
-  # =====================================================
-  install-backend:
-    name: Install Backend Dependencies
-    runs-on: ubuntu-latest
-    outputs:
-      cache-hit: ${{ steps.cache.outputs.cache-hit }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Cache pip packages
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: backend-pip-${{ hashFiles('backend/pyproject.toml') }}
-          restore-keys: backend-pip-
-
-      - name: Install backend dependencies
-        run: |
-          cd backend
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install pytest-cov
-
-  # =====================================================
-  # 1. UNIT TESTS
+  # 1. Unit Tests
   # =====================================================
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: install-backend
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install pytest-cov
 
       - name: Run Unit Tests
         run: |
           cd backend
           pytest tests/unit -vv
 
+
   # =====================================================
-  # 2. ACCEPTANCE TESTS
+  # 2. Acceptance Tests
   # =====================================================
   acceptance-tests:
-    name: Acceptance Tests (API + Database)
+    name: Acceptance Tests
     runs-on: ubuntu-latest
-    needs: install-backend
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install pytest-cov
 
       - name: Inject Supabase Environment
         run: |
@@ -78,16 +64,27 @@ jobs:
           cd backend
           pytest tests/acceptance -vv
 
+
   # =====================================================
-  # 3. OVERALL TESTS + COVERAGE
+  # 3. Overall + Coverage
   # =====================================================
   overall-tests:
-    name: Overall Tests + Coverage
+    name: All Tests + Coverage
     runs-on: ubuntu-latest
-    needs: install-backend
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install pytest-cov
 
       - name: Inject Supabase Environment
         run: |
