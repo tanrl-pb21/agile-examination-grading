@@ -1,4 +1,4 @@
-name: CI - Backend Tests
+name: Backend CI Pipeline
 
 on:
   push:
@@ -7,30 +7,100 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  test:
+
+  # =====================================================
+  #  Shared Job: Install dependencies once for all jobs
+  # =====================================================
+  install-backend:
+    name: Install Backend Dependencies
     runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
+          python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Cache pip packages
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: backend-pip-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: backend-pip-
+
+      - name: Install backend dependencies
         run: |
           cd backend
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
+          pip install pytest-cov
 
-      - name: Setup environment variables
+  # =====================================================
+  # 1. UNIT TESTS
+  # =====================================================
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: install-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Unit Tests
+        run: |
+          cd backend
+          pytest tests/unit -vv
+
+  # =====================================================
+  # 2. ACCEPTANCE TESTS
+  # =====================================================
+  acceptance-tests:
+    name: Acceptance Tests (API + Database)
+    runs-on: ubuntu-latest
+    needs: install-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject Supabase Environment
         run: |
           cd backend
           echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
 
-      - name: Run pytest
+      - name: Run Acceptance Tests
         run: |
           cd backend
-          pytest -vv
+          pytest tests/acceptance -vv
+
+  # =====================================================
+  # 3. OVERALL TESTS + COVERAGE
+  # =====================================================
+  overall-tests:
+    name: Overall Tests + Coverage
+    runs-on: ubuntu-latest
+    needs: install-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject Supabase Environment
+        run: |
+          cd backend
+          echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
+
+      - name: Run Full Test Suite with Coverage
+        run: |
+          cd backend
+          pytest --cov=src --cov-report=xml
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: backend/coverage.xml

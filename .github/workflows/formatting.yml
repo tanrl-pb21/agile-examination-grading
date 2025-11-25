@@ -1,0 +1,40 @@
+name: Code Formatting Check
+
+on:
+  pull_request:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  formatting:
+    name: Formatting & Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install formatting tools
+        run: |
+          cd backend
+          pip install black ruff mypy
+
+      - name: Run Black (check only)
+        run: |
+          cd backend
+          black --check src tests
+
+      - name: Run Ruff (lint check)
+        run: |
+          cd backend
+          ruff check src tests
+
+      - name: Run Mypy
+        run: |
+          cd backend
+          mypy src
