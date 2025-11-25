@@ -14,7 +14,12 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-bdd",
-    "httpx"
+    "httpx",
+    "pytest-cov",
+    "black",
+    "ruff",
+    "mypy",
+    "pre-commit"
 ]
 
 [build-system]
@@ -22,10 +27,48 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
+# Tell setuptools that our source code lives in the "src" folder.
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
+# Search for packages inside "src"
 where = ["src"]
 
 [tool.pytest.ini_options]
+# Add src to Python path for pytest
 pythonpath = ["src"]
+
+
+# -------------------------------------------------------
+# Ruff - Fast linter and import sorter
+# -------------------------------------------------------
+[tool.ruff]
+line-length = 88                  # Standard line length (same as Black)
+indent-width = 4                 # Python default indent
+select = ["E", "F", "I"]         # Errors, flake8 warnings, import rules
+ignore = ["E501"]                # Ignore long line errors (Black handles it)
+target-version = "py312"         # Python 3.12
+
+[tool.ruff.format]
+quote-style = "double"           # Consistent double quotes
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.isort]
+known-third-party = ["fastapi", "psycopg"]
+
+
+# -------------------------------------------------------
+# Black - Code formatter
+# -------------------------------------------------------
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+
+# -------------------------------------------------------
+# Mypy - Type checking
+# -------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
