@@ -4,14 +4,11 @@ from src.services.exams_service import ExamService
 router = APIRouter(prefix="/exams", tags=["Exams"])
 service = ExamService()
 
+
 @router.post("", status_code=201)
 def add_exam(exam: dict):
     try:
-        return service.add_exam(
-            exam["title"],
-            exam["start_time"],
-            exam["end_time"]
-        )
+        return service.add_exam(exam["title"], exam["start_time"], exam["end_time"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

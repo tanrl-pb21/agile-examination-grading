@@ -1,4 +1,6 @@
 from src.db import get_conn
+from psycopg.rows import dict_row
+
 
 class ExamService:
 
@@ -13,7 +15,9 @@ class ExamService:
         """
 
         with get_conn() as conn:
-            row = conn.execute(sql, (title, start_time, end_time)).fetchone()
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (title, start_time, end_time))
+                row = cur.fetchone()
 
         return row
 

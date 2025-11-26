@@ -2,9 +2,7 @@ import sys
 import os
 
 # backend root
-BASE_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")
-)
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 #  backend added to python search path
 if BASE_DIR not in sys.path:
