@@ -19,7 +19,8 @@ dev = [
     "black",
     "ruff",
     "mypy",
-    "pre-commit"
+    "pre-commit",
+    "jinja2"  
 ]
 
 [build-system]
