@@ -27,6 +27,11 @@ jobs:
           pip install -e ".[dev]"
           pip install pytest-cov
 
+      - name: Inject fake env for unit tests
+        run: |
+          cd backend
+          echo "SUPABASE_DB_URL=postgres://fake" > .env
+          
       - name: Run Unit Tests
         run: |
           cd backend
