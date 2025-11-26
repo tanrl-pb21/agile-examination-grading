@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Exam List - Teacher</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-50">
+
+  <!-- Header -->
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-semibold">Teacher Dashboard — Exam List</h1>
+    <button id="addExamBtn"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+      + Add New Exam
+    </button>
+  </header>
+
+  <!-- Main Section -->
+  <main class="p-6">
+    <div class="bg-white shadow rounded-lg p-4">
+      <h2 class="text-xl font-semibold mb-4">All Exams</h2>
+
+      <!-- Table -->
+      <table class="w-full border-collapse">
+        <thead>
+          <tr class="bg-gray-100 text-left">
+            <th class="p-3 border">Exam ID</th>
+            <th class="p-3 border">Title</th>
+            <th class="p-3 border">Start Time</th>
+            <th class="p-3 border">End Time</th>
+            <th class="p-3 border">Status</th>
+            <th class="p-3 border text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="examTable"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- External JS -->
+  <script src="/static/script.js"></script>
+
+</body>
+</html>
