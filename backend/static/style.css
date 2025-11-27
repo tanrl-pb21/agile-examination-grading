@@ -145,6 +145,14 @@ tbody tr:hover {
     align-items: center;
     gap: 16px;
 }
+.exam-timer {
+    font-size: 16px;
+    font-weight: 600;
+    background: #ffe4e6;
+    color: #b91c1c;
+    padding: 6px 12px;
+    border-radius: 8px;
+}
 
 .back-btn {
     width: 36px;
