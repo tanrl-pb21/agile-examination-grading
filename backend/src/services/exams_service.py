@@ -1,6 +1,6 @@
 from src.db import get_conn
 from psycopg.rows import dict_row
-from datetime import datetime, date, time,timezone
+from datetime import datetime, date, time,timezone,timedelta
 
 
 def validate_date_obj(dt: date):
@@ -143,8 +143,12 @@ class ExamService:
 
 
     def get_exam_duration_by_code(self, exam_code: str) -> dict:
+        from datetime import datetime, timedelta, timezone
+
+        MALAYSIA_TZ = timezone(timedelta(hours=8))
+
         sql = """
-            SELECT date, start_time, duration
+            SELECT date, start_time, end_time, duration
             FROM exams
             WHERE exam_code = %s
         """
@@ -157,29 +161,35 @@ class ExamService:
         if not row:
             raise ValueError("Exam not found")
 
+        # 1. Extract raw values
         exam_date = row["date"]
         start_time = row["start_time"]
-        duration_minutes = row["duration"]  # <-- stored as minutes
+        end_time = row["end_time"]
+        duration_minutes = row["duration"]
 
-        # Convert strings
-        exam_date = datetime.strptime(str(exam_date), "%Y-%m-%d").date()
-        start_time = datetime.strptime(str(start_time), "%H:%M:%S").time()
+        # 2. Convert to Python date/time if needed
+        if isinstance(exam_date, str):
+            exam_date = datetime.strptime(exam_date, "%Y-%m-%d").date()
 
-        # Build start datetime
-        start_dt = datetime.combine(exam_date, start_time, timezone.utc)
-        now = datetime.now(timezone.utc)
+        if isinstance(start_time, str):
+            start_time = datetime.strptime(start_time, "%H:%M:%S").time()
 
-        # Convert duration to seconds
-        duration_seconds = duration_minutes * 60
+        if isinstance(end_time, str):
+            end_time = datetime.strptime(end_time, "%H:%M:%S").time()
 
-        # Calculate elapsed + remaining
-        elapsed_seconds = max(int((now - start_dt).total_seconds()), 0)
-        remaining_seconds = max(duration_seconds - elapsed_seconds, 0)
+        # 3. Combine into Malaysia timezone datetime
+        start_dt = datetime.combine(exam_date, start_time, MALAYSIA_TZ)
+        end_dt   = datetime.combine(exam_date, end_time, MALAYSIA_TZ)
+        now      = datetime.now(MALAYSIA_TZ)
+
+        # 4. Calculate
+        duration_seconds = int((end_dt - start_dt).total_seconds())
+        remaining_seconds = max(int((end_dt - now).total_seconds()), 0)
 
         return {
             "duration_seconds": duration_seconds,
             "remaining_seconds": remaining_seconds,
             "date": exam_date.isoformat(),
             "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat(),
         }
-

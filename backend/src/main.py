@@ -4,8 +4,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from routers import exams
-from routers import course
+from src.routers import exams
+from src.routers import course
 
 app = FastAPI()
 app.include_router(exams.router)
