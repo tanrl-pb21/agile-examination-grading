@@ -5,9 +5,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from routers import exams
+from routers import course
 
 app = FastAPI()
 app.include_router(exams.router)
+app.include_router(course.router)
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,7 +26,7 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 # Home page → return HTML instead of JSON
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("examManagement.html", {"request": request})
 
 
 @app.get("/studentExam")

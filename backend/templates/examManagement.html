@@ -143,6 +143,14 @@
                         <label>Exam ID <span class="required">*</span></label>
                         <input type="text" id="examIdInput" required placeholder="e.g., MATH2025-FINAL">
                     </div>
+
+                    <div class="form-group">
+                        <label>Course <span class="required">*</span></label>
+                        <select id="courseCode" required>
+                            <option value="">Select a course</option>
+                            <!-- Options will be dynamically populated -->
+                        </select>
+                    </div>
                     
                     <div class="form-group">
                         <label>Exam Date <span class="required">*</span></label>
@@ -170,12 +178,46 @@
     </div>
 
     <script>
-        // Mock Data
-        let exams = [
-            { id: 1, examId: "3123", title: "3131", date: "2025-11-06", startTime: "01:08", endTime: "12:12", duration: 664, status: "ongoing" },
-            { id: 2, examId: "3124", title: "Mathematics Final", date: "2025-11-15", startTime: "09:00", endTime: "11:00", duration: 120, status: "scheduled" },
-            { id: 3, examId: "3125", title: "Physics Midterm", date: "2025-10-20", startTime: "14:00", endTime: "16:00", duration: 120, status: "completed" }
-        ];
+       let exams = [];
+
+       let courses = [];
+
+        async function loadCourses() {
+        try {
+            const res = await fetch('/courses');
+            if (!res.ok) throw new Error('Failed to fetch courses');
+            courses = await res.json();
+
+            const courseSelect = document.getElementById('courseCode');
+            courseSelect.innerHTML = '<option value="">Select a course</option>'; // reset
+
+            courses.forEach(course => {
+            const option = document.createElement('option');
+            option.value = course.course_code;  // or course.id if that’s the key
+            option.textContent = `${course.course_code} - ${course.course_name}`;
+            courseSelect.appendChild(option);
+            });
+        } catch (err) {
+            console.error('Error loading courses:', err);
+        }
+        }
+
+
+       async function loadExams() {
+            const tbody = document.getElementById('examTableBody');
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">Loading exams...</td></tr>`;
+            try {
+                const response = await fetch('/exams');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                exams = await response.json();
+                console.log('Loaded exams:', exams);
+                renderExams(exams);
+            } catch (error) {
+                console.error('Failed to load exams:', error);
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red">Failed to load exams. Please try again later.</td></tr>`;
+            }
+        }
 
         function renderExams(data) {
             const tbody = document.getElementById('examTableBody');
@@ -186,12 +228,13 @@
             tbody.innerHTML = data.map(exam => `
                 <tr>
                     <td>${exam.title}</td>
-                    <td>${exam.examId}</td>
+                    <td>${exam.exam_code}</td>
                     <td>${exam.date}</td>
-                    <td>${exam.startTime}</td>
-                    <td>${exam.endTime}</td>
+                    <td>${exam.start_time}</td>
+                    <td>${exam.end_time}</td>
                     <td>${exam.duration} min</td>
-                    <td><span class="status-badge status-${exam.status}">${exam.status.charAt(0).toUpperCase() + exam.status.slice(1)}</span></td>
+                    <td><span class="status-badge status-${exam.status || 'unknown'}">${
+    exam.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Unknown'}</span></td>
                     <td class="actions">
                         <a href="examDetails.html?id=${exam.id}" class="action-btn view" title="View">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -220,7 +263,7 @@
             const search = document.getElementById('searchInput').value.toLowerCase();
             const status = document.getElementById('statusFilter').value;
             const filtered = exams.filter(exam => {
-                const matchSearch = exam.title.toLowerCase().includes(search) || exam.examId.toLowerCase().includes(search);
+                const matchSearch = exam.title.toLowerCase().includes(search) || exam.exam_code.toLowerCase().includes(search);
                 const matchStatus = status === 'all' || exam.status === status;
                 return matchSearch && matchStatus;
             });
@@ -240,10 +283,12 @@
             document.getElementById('examDate').value = '';
             document.getElementById('examStartTime').value = '';
             document.getElementById('examEndTime').value = '';
+            document.getElementById('courseCode').value = '';
         }
 
         function openModal() {
             resetForm();
+            loadCourses();
             document.getElementById('examModalTitle').textContent = 'Create New Exam';
             document.getElementById('examSubmitBtn').textContent = 'Next: Add Questions';
             document.getElementById('examModal').classList.add('active');
@@ -258,15 +303,20 @@
             if (exam) {
                 document.getElementById('examEditId').value = id;
                 document.getElementById('examTitle').value = exam.title;
-                document.getElementById('examIdInput').value = exam.examId;
+                document.getElementById('examIdInput').value = exam.exam_code;
                 document.getElementById('examDate').value = exam.date;
-                document.getElementById('examStartTime').value = exam.startTime;
-                document.getElementById('examEndTime').value = exam.endTime;
+                document.getElementById('examStartTime').value = exam.start_time;
+                document.getElementById('examEndTime').value = exam.end_time;
+
+                // Set selected course code
+                document.getElementById('courseCode').value = exam.course_code || '';
+
                 document.getElementById('examModalTitle').textContent = 'Edit Exam';
                 document.getElementById('examSubmitBtn').textContent = 'Save Changes';
                 document.getElementById('examModal').classList.add('active');
             }
         }
+
 
         function calculateDuration(startTime, endTime) {
             const [startHour, startMin] = startTime.split(':').map(Number);
@@ -276,40 +326,88 @@
             return endMinutes - startMinutes;
         }
 
-        function saveExam(e) {
+        async function saveExam(e) {
             e.preventDefault();
+
             const editId = document.getElementById('examEditId').value;
             const startTime = document.getElementById('examStartTime').value;
             const endTime = document.getElementById('examEndTime').value;
-            const duration = calculateDuration(startTime, endTime);
 
+            // Prepare the data object - only send fields that backend expects
             const examData = {
                 title: document.getElementById('examTitle').value,
-                examId: document.getElementById('examIdInput').value,
+                exam_code: document.getElementById('examIdInput').value,
                 date: document.getElementById('examDate').value,
-                startTime: startTime,
-                endTime: endTime,
-                duration: duration,
-                status: 'scheduled'
+                start_time: startTime,
+                end_time: endTime,
+                status: 'scheduled',
+                course_code: document.getElementById('courseCode').value,
             };
 
-            let examId;
-            if (editId) {
-                const idx = exams.findIndex(e => e.id === parseInt(editId));
-                if (idx > -1) {
-                    exams[idx] = { ...exams[idx], ...examData };
-                    examId = exams[idx].id;
+            try {
+                let response;
+                if (editId) {
+                    response = await fetch(`/exams/${editId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(examData)
+                    });
+                } else {
+                    response = await fetch('/exams', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(examData)
+                    });
                 }
-                renderExams(exams);
-                closeModal();
-            } else {
-                const newId = exams.length > 0 ? Math.max(...exams.map(e => e.id)) + 1 : 1;
-                examId = newId;
-                exams.push({ id: newId, ...examData });
-                renderExams(exams);
-                closeModal();
-                // Redirect to exam details page
-                window.location.href = `examDetails.html?id=${examId}`;
+
+                const responseData = await response.json();
+
+                // Handle validation errors from Pydantic (422)
+                if (response.status === 422) {
+                    const errors = responseData.detail;
+                    let errorMsg = "Please fix these errors:\n\n";
+                    errors.forEach(err => {
+                        const field = err.loc[err.loc.length - 1];
+                        errorMsg += `• ${field}: ${err.msg}\n`;
+                    });
+                    alert(errorMsg);
+                    return;
+                }
+
+                // Handle custom validation errors (400)
+                if (response.status === 400) {
+                    alert(`Error: ${responseData.detail}`);
+                    return;
+                }
+
+                // Handle other errors
+                if (!response.ok) {
+                    alert(`Server error: ${response.statusText}`);
+                    return;
+                }
+
+                // Success - responseData now contains the saved exam
+                const savedExam = responseData;
+
+                if (editId) {
+                    const idx = exams.findIndex(e => e.id === parseInt(editId));
+                    if (idx > -1) {
+                        exams[idx] = savedExam;
+                    }
+                    renderExams(exams);
+                    closeModal();
+                    alert('Exam updated successfully!');
+                } else {
+                    exams.push(savedExam);
+                    renderExams(exams);
+                    closeModal();
+                    // Optional: Redirect to exam details
+                    // window.location.href = `examDetails.html?id=${savedExam.id}`;
+                }
+
+            } catch (error) {
+                console.error('Save exam error:', error);
+                alert(`Network error: ${error.message}`);
             }
         }
 
@@ -320,7 +418,7 @@
             }
         }
 
-        renderExams(exams);
+        loadExams();
     </script>
 </body>
 </html>
