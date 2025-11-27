@@ -384,7 +384,7 @@
                     <td><span class="status-badge status-${exam.status || 'unknown'}">${
     exam.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Unknown'}</span></td>
                     <td class="actions">
-                        <a href="examDetails.html?id=${exam.id}" class="action-btn view" title="View">
+                        <a href="/examDetails?id=${exam.id}" class="action-btn view" title="View">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                 <circle cx="12" cy="12" r="3"/>

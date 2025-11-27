@@ -4,13 +4,14 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from routers import exams
-from routers import course
+from src.routers import exams
+from src.routers import course
+from src.routers import question
 
 app = FastAPI()
 app.include_router(exams.router)
 app.include_router(course.router)
-
+app.include_router(question.router)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -35,6 +36,7 @@ def exam_details(request: Request, id: int):
         "examDetails.html",
         {"request": request, "exam_id": id}
     )
+
 # http://127.0.0.1:8000/examDetails?id=1
 @app.get("/examGrading", response_class=HTMLResponse)
 def exam_grading(request: Request, submissionId: str, examId: int):
@@ -62,7 +64,6 @@ def student_taking_exam(request: Request):
     return templates.TemplateResponse(
         "studentTakingExam.html", {"request": request}
     )
-
 
 # Student: submission list
 @app.get("/studentSubmissionList", response_class=HTMLResponse)
