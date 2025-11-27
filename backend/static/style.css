@@ -885,6 +885,10 @@ tbody tr:hover {
     color: #ef4444;
 }
 
+.no-resize {
+    resize: none !important;
+}
+
 .form-group input,
 .form-group textarea,
 .form-group select {
