@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Submissions - Student Portal</title>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+    <div class="submissions-container">
+        <!-- Header -->
+        <div class="submissions-header">
+            <div>
+                <h1 class="submissions-title">My Submissions</h1>
+                <p class="submissions-subtitle">View and review your exam submissions</p>
+            </div>
+            <button class="btn-back-to-exams" onclick="window.location.href='studentExam.html'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Exams
+            </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="submissions-search-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" id="submissionsSearchInput" placeholder="Search by exam title or submission ID...">
+        </div>
+
+        <!-- Submissions Cards Grid -->
+        <div class="submissions-cards-grid" id="submissionsCardsContainer">
+            <!-- Submission cards will be generated here -->
+        </div>
+    </div>
+
+    <script>
+        // Mock submissions data
+        const submissionsData = [
+            {
+                id: 1,
+                submissionId: 'sub2001',
+                examTitle: '3131',
+                examId: 'EXAM-3131',
+                date: '1/27/2025',
+                time: '10:30:00 PM',
+                score: '1/2',
+                percentage: '50.0%',
+                status: 'Graded'
+            },
+            {
+                id: 2,
+                submissionId: 'sub2002',
+                examTitle: 'Mathematics Final',
+                examId: 'MATH-FINAL-2025',
+                date: '1/26/2025',
+                time: '7:15:00 PM',
+                score: '1/2',
+                percentage: '50.0%',
+                status: 'Graded'
+            }
+        ];
+
+        // Render submission cards
+        function renderSubmissionCards() {
+            const container = document.getElementById('submissionsCardsContainer');
+            container.innerHTML = submissionsData.map(submission => `
+                <div class="submission-card">
+                    <div class="submission-card-header">
+                        <h3 class="submission-card-title">${submission.examTitle}</h3>
+                        <span class="submission-status-badge status-graded">${submission.status}</span>
+                    </div>
+                    
+                    <p class="submission-id">ID: ${submission.submissionId}</p>
+                    
+                    <div class="submission-details">
+                        <div class="submission-detail-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            <span>${submission.date}</span>
+                        </div>
+                        <div class="submission-detail-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                            <span>${submission.time}</span>
+                        </div>
+                    </div>
+
+                    <div class="submission-score-section">
+                        <div class="submission-score-large">${submission.score}</div>
+                        <div class="submission-score-label">Your Score</div>
+                        <div class="submission-percentage">${submission.percentage}</div>
+                    </div>
+
+                    <button class="btn-review-answers" onclick="viewSubmission(${submission.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Review Answers
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // View submission details
+        function viewSubmission(id) {
+            window.location.href = `studentSubmissionReview.html?id=${id}`;
+        }
+
+        // Search functionality
+        document.getElementById('submissionsSearchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('.submission-card');
+            
+            cards.forEach(card => {
+                const title = card.querySelector('.submission-card-title').textContent.toLowerCase();
+                const id = card.querySelector('.submission-id').textContent.toLowerCase();
+                
+                if (title.includes(searchTerm) || id.includes(searchTerm)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // Initialize
+        renderSubmissionCards();
+    </script>
+</body>
+</html>

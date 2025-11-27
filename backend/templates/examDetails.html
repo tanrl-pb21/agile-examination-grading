@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Management - Exam Detail</title>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Exam Management</h1>
+                <p>Teacher Dashboard</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="examManagement.html" class="nav-item active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 9h6M9 13h6M9 17h4"/>
+                    </svg>
+                    Examinations
+                </a>
+                <a href="#" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Students
+                </a>
+                <a href="#" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                        <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                    </svg>
+                    Reports
+                </a>
+                <a href="#" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    Settings
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-avatar">T</div>
+                <div class="user-info">
+                    <h4>Teacher</h4>
+                    <p>teacher@school.edu</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Page Header with Back Button -->
+            <div class="exam-header">
+                <div class="exam-header-left">
+                    <a href="examManagement.html" class="back-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 18l-6-6 6-6"/>
+                        </svg>
+                    </a>
+                    <div class="exam-title-section">
+                        <div class="exam-title-row">
+                            <h2 class="exam-title" id="examTitle">Loading...</h2>
+                            <span class="status-badge status-ongoing" id="examStatusBadge">Ongoing</span>
+                        </div>
+                        <p class="exam-subtitle">View and manage exam questions and submissions</p>
+                    </div>
+                </div>
+                <button class="btn-edit-exam">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Edit Exam
+                </button>
+            </div>
+
+            <!-- Exam Info Cards -->
+            <div class="exam-info-cards" id="examInfoCards"></div>
+
+            <!-- Tabs -->
+            <div class="tabs-container">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('assigned-questions', this)">Assigned Questions</button>
+                    <button class="tab" onclick="switchTab('student-submissions', this)">Student Submissions</button>
+                </div>
+            </div>
+
+            <!-- Tab Content: Assigned Questions -->
+            <div class="tab-content active" id="assigned-questions">
+                <div class="question-stats" id="questionStats"></div>
+                <div class="questions-list" id="questionsList"></div>
+            </div>
+
+            <!-- Tab Content: Student Submissions -->
+            <div class="tab-content" id="student-submissions">
+                <div class="submission-stats" id="submissionStats"></div>
+                <div class="submission-filters">
+                    <div class="search-box submission-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="M21 21l-4.35-4.35"/>
+                        </svg>
+                        <input type="text" id="submissionSearch" placeholder="Search by name, ID, or email..." onkeyup="filterSubmissions()">
+                    </div>
+                    <div class="filter-tabs" id="filterTabs"></div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>STUDENT ID</th>
+                                <th>STUDENT NAME</th>
+                                <th>SUBMIT STATUS</th>
+                                <th>SUBMISSION DATE</th>
+                                <th>SCORE</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="submissionsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit MCQ Modal -->
+    <div class="modal-overlay" id="mcqModal">
+        <div class="modal modal-question">
+            <div class="modal-header-new">
+                <div class="modal-header-left">
+                    <div class="modal-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <path d="M9 9h6M9 13h6M9 17h4"/>
+                        </svg>
+                    </div>
+                    <div class="modal-title-group">
+                        <h3 id="mcqModalTitle">Add MCQ Question</h3>
+                        <p>Create a multiple choice question</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" onclick="closeAllModals()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <form id="mcqForm" onsubmit="saveMCQ(event)">
+                    <input type="hidden" id="mcqEditId" value="">
+                    
+                    <div class="form-group">
+                        <label>Question <span class="required">*</span></label>
+                        <textarea id="mcqQuestion" required placeholder="Enter your question here..." rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Answer Options <span class="required">*</span></label>
+                        <div class="options-input-list">
+                            <div class="option-input-row">
+                                <button type="button" class="option-select-btn" data-option="0" onclick="selectCorrectAnswer(0)"></button>
+                                <input type="text" id="mcqOption1" required placeholder="Option 1">
+                            </div>
+                            <div class="option-input-row">
+                                <button type="button" class="option-select-btn selected" data-option="1" onclick="selectCorrectAnswer(1)">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
+                                <input type="text" id="mcqOption2" required placeholder="Option 2">
+                            </div>
+                            <div class="option-input-row">
+                                <button type="button" class="option-select-btn" data-option="2" onclick="selectCorrectAnswer(2)"></button>
+                                <input type="text" id="mcqOption3" required placeholder="Option 3">
+                            </div>
+                            <div class="option-input-row">
+                                <button type="button" class="option-select-btn" data-option="3" onclick="selectCorrectAnswer(3)"></button>
+                                <input type="text" id="mcqOption4" required placeholder="Option 4">
+                            </div>
+                        </div>
+                        <p class="form-hint">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 16v-4M12 8h.01"/>
+                            </svg>
+                            Click the circle to mark the correct answer
+                        </p>
+
+                    </div>
+
+                    <div class="form-group">
+                        <label>Points <span class="required">*</span></label>
+                        <input type="number" id="mcqPoints" required value="5" min="1">
+                    </div>
+
+                    <div class="modal-footer-new">
+                        <button type="submit" class="btn-modal-submit blue" id="mcqSubmitBtn">Add Question</button>
+                        <button type="button" class="btn-modal-cancel" onclick="closeAllModals()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Essay Modal -->
+    <div class="modal-overlay" id="essayModal">
+        <div class="modal modal-question">
+            <div class="modal-header-new">
+                <div class="modal-header-left">
+                    <div class="modal-icon purple">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                    </div>
+                    <div class="modal-title-group">
+                        <h3 id="essayModalTitle">Add Essay Question</h3>
+                        <p>Create an essay question</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" onclick="closeAllModals()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <form id="essayForm" onsubmit="saveEssay(event)">
+                    <input type="hidden" id="essayEditId" value="">
+
+                    <div class="form-group">
+                        <label>Question <span class="required">*</span></label>
+                        <textarea id="essayQuestion" required placeholder="Enter your essay question here..." rows="4"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Points <span class="required">*</span></label>
+                        <input type="number" id="essayPoints" required value="20" min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Grading Rubric <span class="required">*</span></label>
+                        <textarea id="essayRubric" required placeholder="e.g., Content relevance (40%), Critical thinking (30%), Examples (20%), Writing quality (10%)" rows="2"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Word Limit (Optional)</label>
+                        <input type="number" id="essayWordLimit" placeholder="e.g., 500">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Reference Answer (Optional)</label>
+                        <textarea id="essayReferenceAnswer" placeholder="Enter a reference answer or key points..." rows="3"></textarea>
+                    </div>
+
+                    <div class="modal-footer-new">
+                        <button type="submit" class="btn-modal-submit purple" id="essaySubmitBtn">Add Question</button>
+                        <button type="button" class="btn-modal-cancel" onclick="closeAllModals()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock Data
+        const examsData = {
+            1: {
+                id: 1,
+                examId: "3123",
+                title: "3131",
+                date: "2025-11-06",
+                startTime: "01:08",
+                endTime: "12:12",
+                duration: 3213,
+                status: "ongoing",
+                totalStudents: 15,
+                submitted: 1,
+                missed: 14,
+                questions: [
+                    { id: 1, type: "mcq", points: 5, question: "What is the capital of France?", options: ["London", "Berlin", "Paris", "Madrid"], correctAnswer: 2 },
+                    { id: 2, type: "mcq", points: 5, question: "Which planet is known as the Red Planet?", options: ["Venus", "Mars", "Jupiter", "Saturn"], correctAnswer: 1 },
+                    { id: 3, type: "essay", points: 20, question: "Discuss the impact of climate change on global ecosystems. Include specific examples and potential solutions.", rubric: "Content relevance (40%), Critical thinking (30%), Examples and evidence (20%), Writing quality (10%)", wordLimit: 500, referenceAnswer: "" }
+                ],
+                submissions: [
+                    { id: "1001", studentId: "student123", studentName: "John Doe", studentEmail: "john.doe@university.edu", avatar: "JD", avatarColor: "blue", status: "submitted", submissionDate: "1/27/2025 10:30:00 PM", score: "1/2", percentage: "50.0%" },
+                    { id: 2, studentId: "student124", studentName: "Sarah Johnson", studentEmail: "sarah.johnson@university.edu", avatar: "SJ", avatarColor: "green", status: "missed", submissionDate: null, score: null, percentage: null }
+                ]
+            },
+            2: {
+                id: 2,
+                examId: "3124",
+                title: "Mathematics Final",
+                date: "2025-11-15",
+                startTime: "09:00",
+                endTime: "11:00",
+                duration: 120,
+                status: "scheduled",
+                totalStudents: 25,
+                submitted: 0,
+                missed: 0,
+                questions: [
+                    { id: 1, type: "mcq", points: 10, question: "What is the derivative of x²?", options: ["x", "2x", "x²", "2"], correctAnswer: 1 }
+                ],
+                submissions: []
+            },
+            3: {
+                id: 3,
+                examId: "3125",
+                title: "Physics Midterm",
+                date: "2025-10-20",
+                startTime: "14:00",
+                endTime: "16:00",
+                duration: 120,
+                status: "completed",
+                totalStudents: 30,
+                submitted: 28,
+                missed: 2,
+                questions: [
+                    { id: 1, type: "mcq", points: 5, question: "What is the SI unit of force?", options: ["Joule", "Newton", "Watt", "Pascal"], correctAnswer: 1 }
+                ],
+                submissions: [
+                    { id: 1, studentId: "student201", studentName: "Mike Wilson", studentEmail: "mike.wilson@university.edu", avatar: "MW", avatarColor: "blue", status: "submitted", submissionDate: "10/20/2025 3:45:00 PM", score: "5/5", percentage: "100%" }
+                ]
+            }
+        };
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const examId = urlParams.get('id') || 1;
+        let currentExam = examsData[examId];
+        let currentFilter = 'all';
+        let selectedCorrectAnswer = 1;
+
+        function init() {
+            if (!currentExam) { alert('Exam not found'); window.location.href = 'examManagement.html'; return; }
+            renderExamInfo();
+            renderQuestionStats();
+            renderQuestions();
+            renderSubmissionStats();
+            renderFilterTabs();
+            renderSubmissions();
+        }
+
+        function renderExamInfo() {
+            document.getElementById('examTitle').textContent = currentExam.title;
+            document.getElementById('examStatusBadge').textContent = currentExam.status.charAt(0).toUpperCase() + currentExam.status.slice(1);
+            document.getElementById('examStatusBadge').className = `status-badge status-${currentExam.status}`;
+            document.getElementById('examInfoCards').innerHTML = `
+                <div class="info-card"><span class="info-label">Exam ID</span><span class="info-value">${currentExam.examId}</span></div>
+                <div class="info-card"><span class="info-label">Date</span><span class="info-value">${currentExam.date}</span></div>
+                <div class="info-card"><span class="info-label">Time</span><span class="info-value">${currentExam.startTime} - ${currentExam.endTime}</span></div>
+                <div class="info-card"><span class="info-label">Duration</span><span class="info-value">${currentExam.duration}</span></div>
+            `;
+        }
+
+        function renderQuestionStats() {
+            const mcqCount = currentExam.questions.filter(q => q.type === 'mcq').length;
+            const essayCount = currentExam.questions.filter(q => q.type === 'essay').length;
+            const totalPoints = currentExam.questions.reduce((sum, q) => sum + q.points, 0);
+            document.getElementById('questionStats').innerHTML = `
+                <div class="stat-item"><span class="stat-dot blue"></span><span>MCQ Questions: <strong>${mcqCount}</strong></span></div>
+                <div class="stat-item"><span class="stat-dot purple"></span><span>Essay Questions: <strong>${essayCount}</strong></span></div>
+                <div class="stat-item"><svg viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Total Points: <strong>${totalPoints}</strong></span></div>
+                <div class="add-question-dropdown">
+                    <button class="btn-add-question" onclick="toggleDropdown(event)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Question
+                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="#" class="dropdown-item" onclick="openMCQModal(event)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                            <div><span class="dropdown-title">Add MCQ</span><span class="dropdown-desc">Multiple choice question</span></div>
+                        </a>
+                        <a href="#" class="dropdown-item" onclick="openEssayModal(event)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <div><span class="dropdown-title">Add Essay</span><span class="dropdown-desc">Essay question</span></div>
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderQuestions() {
+            const container = document.getElementById('questionsList');
+            if (currentExam.questions.length === 0) { container.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;">No questions added yet</div>'; return; }
+            container.innerHTML = currentExam.questions.map((q, index) => {
+                if (q.type === 'mcq') {
+                    return `<div class="question-card">
+                        <div class="question-header">
+                            <div class="question-number">${index + 1}</div>
+                            <span class="question-type mcq">MCQ</span>
+                            <span class="question-points">${q.points} points</span>
+                            <div class="question-actions">
+                                <button class="action-btn edit" onclick="editMCQ(${q.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                                <button class="action-btn delete" onclick="deleteQuestion(${q.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                            </div>
+                        </div>
+                        <div class="question-content">
+                            <p class="question-text">${q.question}</p>
+                            <div class="options-list">
+                                ${q.options.map((opt, i) => `<div class="option ${i === q.correctAnswer ? 'correct' : ''}"><span class="option-radio ${i === q.correctAnswer ? 'checked' : ''}">${i === q.correctAnswer ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span><span>${opt}</span></div>`).join('')}
+                            </div>
+                        </div>
+                    </div>`;
+                } else {
+                    return `<div class="question-card">
+                        <div class="question-header">
+                            <div class="question-number">${index + 1}</div>
+                            <span class="question-type essay">Essay</span>
+                            <span class="question-points">${q.points} points</span>
+                            <div class="question-actions">
+                                <button class="action-btn edit" onclick="editEssay(${q.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                                <button class="action-btn delete" onclick="deleteQuestion(${q.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                            </div>
+                        </div>
+                        <div class="question-content">
+                            <p class="question-text">${q.question}</p>
+                            ${q.rubric ? `<div class="rubric-box"><div class="rubric-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Rubric</span></div><p class="rubric-text">${q.rubric}</p></div>` : ''}
+                        </div>
+                    </div>`;
+                }
+            }).join('');
+        }
+
+        function renderSubmissionStats() {
+            document.getElementById('submissionStats').innerHTML = `
+                <div class="stat-card blue"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="stat-content"><span class="stat-number">${currentExam.totalStudents}</span><span class="stat-label">Total Students</span></div></div>
+                <div class="stat-card green"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="stat-content"><span class="stat-number">${currentExam.submitted}</span><span class="stat-label">Submitted</span></div></div>
+                <div class="stat-card red"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="stat-content"><span class="stat-number">${currentExam.missed}</span><span class="stat-label">Missed</span></div></div>
+            `;
+        }
+
+        function renderFilterTabs() {
+            const submitted = currentExam.submissions.filter(s => s.status === 'submitted').length;
+            const missed = currentExam.submissions.filter(s => s.status === 'missed').length;
+            document.getElementById('filterTabs').innerHTML = `
+                <button class="filter-tab ${currentFilter === 'all' ? 'active' : ''}" onclick="setFilter('all')">All (${currentExam.submissions.length})</button>
+                <button class="filter-tab ${currentFilter === 'submitted' ? 'active' : ''}" onclick="setFilter('submitted')">Submitted (${submitted})</button>
+                <button class="filter-tab ${currentFilter === 'missed' ? 'active' : ''}" onclick="setFilter('missed')">Missed (${missed})</button>
+            `;
+        }
+
+        function renderSubmissions() {
+            const search = document.getElementById('submissionSearch')?.value.toLowerCase() || '';
+            let filtered = currentExam.submissions;
+            if (currentFilter !== 'all') filtered = filtered.filter(s => s.status === currentFilter);
+            if (search) filtered = filtered.filter(s => s.studentName.toLowerCase().includes(search) || s.studentId.toLowerCase().includes(search) || s.studentEmail.toLowerCase().includes(search));
+            const tbody = document.getElementById('submissionsTableBody');
+            if (filtered.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#6c757d;">No submissions found</td></tr>'; return; }
+            tbody.innerHTML = filtered.map(s => `
+                <tr>
+                    <td>${s.studentId}</td>
+                    <td><div class="student-info"><div class="student-avatar ${s.avatarColor}">${s.avatar}</div><div class="student-details"><span class="student-name">${s.studentName}</span><span class="student-email">${s.studentEmail}</span></div></div></td>
+                    <td><span class="submit-badge ${s.status}">${s.status.charAt(0).toUpperCase() + s.status.slice(1)}</span></td>
+                    <td>${s.submissionDate || '-'}</td>
+                    <td>${s.score ? `${s.score} (${s.percentage})` : '-'}</td>
+                    <td>
+                        ${s.status === 'submitted'
+                            ? `<button class="btn-grade" onclick="goToGrading('${s.studentId}', ${currentExam.id})">
+                                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'>
+                                        <circle cx='12' cy='12' r='10'/>
+                                    </svg>
+                                    Grade
+                            </button>`
+                            : '-'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function setFilter(filter) { currentFilter = filter; renderFilterTabs(); renderSubmissions(); }
+        function filterSubmissions() { renderSubmissions(); }
+        function toggleDropdown(e) { e.stopPropagation(); const menu = document.getElementById('dropdownMenu'); menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; }
+        document.addEventListener('click', () => { const menu = document.getElementById('dropdownMenu'); if (menu) menu.style.display = 'none'; });
+
+        function selectCorrectAnswer(index) {
+            selectedCorrectAnswer = index;
+            document.querySelectorAll('.option-select-btn').forEach((btn, i) => {
+                btn.classList.toggle('selected', i === index);
+                btn.innerHTML = i === index ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
+            });
+        }
+
+        function resetMCQForm() {
+            document.getElementById('mcqEditId').value = '';
+            document.getElementById('mcqQuestion').value = '';
+            document.getElementById('mcqOption1').value = '';
+            document.getElementById('mcqOption2').value = '';
+            document.getElementById('mcqOption3').value = '';
+            document.getElementById('mcqOption4').value = '';
+            document.getElementById('mcqPoints').value = '5';
+            selectCorrectAnswer(1);
+        }
+
+        function resetEssayForm() {
+            document.getElementById('essayEditId').value = '';
+            document.getElementById('essayQuestion').value = '';
+            document.getElementById('essayPoints').value = '20';
+            document.getElementById('essayRubric').value = '';
+            document.getElementById('essayWordLimit').value = '';
+            document.getElementById('essayReferenceAnswer').value = '';
+        }
+
+        function openMCQModal(e) {
+            if (e) e.preventDefault();
+            resetMCQForm();
+            document.getElementById('mcqModalTitle').textContent = 'Add MCQ Question';
+            document.querySelector('#mcqModal .modal-title-group p').textContent = 'Create a multiple choice question';
+            document.getElementById('mcqSubmitBtn').textContent = 'Add Question';
+            document.getElementById('mcqModal').classList.add('active');
+        }
+
+        function openEssayModal(e) {
+            if (e) e.preventDefault();
+            resetEssayForm();
+            document.getElementById('essayModalTitle').textContent = 'Add Essay Question';
+            document.querySelector('#essayModal .modal-title-group p').textContent = 'Create an essay question';
+            document.getElementById('essaySubmitBtn').textContent = 'Add Question';
+            document.getElementById('essayModal').classList.add('active');
+        }
+
+        function editMCQ(id) {
+            const q = currentExam.questions.find(q => q.id === id);
+            if (!q) return;
+            document.getElementById('mcqEditId').value = id;
+            document.getElementById('mcqQuestion').value = q.question;
+            document.getElementById('mcqOption1').value = q.options[0];
+            document.getElementById('mcqOption2').value = q.options[1];
+            document.getElementById('mcqOption3').value = q.options[2];
+            document.getElementById('mcqOption4').value = q.options[3];
+            document.getElementById('mcqPoints').value = q.points;
+            selectCorrectAnswer(q.correctAnswer);
+            document.getElementById('mcqModalTitle').textContent = 'Edit MCQ Question';
+            document.querySelector('#mcqModal .modal-title-group p').textContent = 'Edit multiple choice question';
+            document.getElementById('mcqSubmitBtn').textContent = 'Save Changes';
+            document.getElementById('mcqModal').classList.add('active');
+        }
+
+        function editEssay(id) {
+            const q = currentExam.questions.find(q => q.id === id);
+            if (!q) return;
+            document.getElementById('essayEditId').value = id;
+            document.getElementById('essayQuestion').value = q.question;
+            document.getElementById('essayPoints').value = q.points;
+            document.getElementById('essayRubric').value = q.rubric || '';
+            document.getElementById('essayWordLimit').value = q.wordLimit || '';
+            document.getElementById('essayReferenceAnswer').value = q.referenceAnswer || '';
+            document.getElementById('essayModalTitle').textContent = 'Edit Essay Question';
+            document.querySelector('#essayModal .modal-title-group p').textContent = 'Edit essay question';
+            document.getElementById('essaySubmitBtn').textContent = 'Save Changes';
+            document.getElementById('essayModal').classList.add('active');
+        }
+
+        function closeAllModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active')); }
+
+        function saveMCQ(e) {
+            e.preventDefault();
+            const editId = document.getElementById('mcqEditId').value;
+            const data = {
+                type: 'mcq',
+                points: parseInt(document.getElementById('mcqPoints').value),
+                question: document.getElementById('mcqQuestion').value,
+                options: [document.getElementById('mcqOption1').value, document.getElementById('mcqOption2').value, document.getElementById('mcqOption3').value, document.getElementById('mcqOption4').value],
+                correctAnswer: selectedCorrectAnswer
+            };
+            if (editId) {
+                const idx = currentExam.questions.findIndex(q => q.id === parseInt(editId));
+                if (idx > -1) currentExam.questions[idx] = { ...currentExam.questions[idx], ...data };
+            } else {
+                const newId = currentExam.questions.length > 0 ? Math.max(...currentExam.questions.map(q => q.id)) + 1 : 1;
+                currentExam.questions.push({ id: newId, ...data });
+            }
+            renderQuestionStats(); renderQuestions(); closeAllModals();
+        }
+
+        function saveEssay(e) {
+            e.preventDefault();
+            const editId = document.getElementById('essayEditId').value;
+            const data = {
+                type: 'essay',
+                points: parseInt(document.getElementById('essayPoints').value),
+                question: document.getElementById('essayQuestion').value,
+                rubric: document.getElementById('essayRubric').value,
+                wordLimit: document.getElementById('essayWordLimit').value ? parseInt(document.getElementById('essayWordLimit').value) : null,
+                referenceAnswer: document.getElementById('essayReferenceAnswer').value
+            };
+            if (editId) {
+                const idx = currentExam.questions.findIndex(q => q.id === parseInt(editId));
+                if (idx > -1) currentExam.questions[idx] = { ...currentExam.questions[idx], ...data };
+            } else {
+                const newId = currentExam.questions.length > 0 ? Math.max(...currentExam.questions.map(q => q.id)) + 1 : 1;
+                currentExam.questions.push({ id: newId, ...data });
+            }
+            renderQuestionStats(); renderQuestions(); closeAllModals();
+        }
+
+        function deleteQuestion(id) {
+            if (confirm('Are you sure you want to delete this question?')) {
+                currentExam.questions = currentExam.questions.filter(q => q.id !== id);
+                renderQuestionStats(); renderQuestions();
+            }
+        }
+
+        function goToGrading(studentId, examId) {
+            // Find submission ID based on student ID
+            const submission = currentExam.submissions.find(s => s.studentId === studentId);
+
+            if (!submission) {
+                alert("Submission not found");
+                return;
+            }
+
+            // Redirect with URL query parameters
+            window.location.href = `examGrading.html?submissionId=sub${submission.id}&examId=${examId}`;
+        }
+
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade Submission - Exam Management</title>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Exam Management</h1>
+                <p>Teacher Dashboard</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 9h6M9 13h6M9 17h4"/>
+                    </svg>
+                    Examinations
+                </a>
+                <a href="#" class="nav-item active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 11l3 3L22 4"/>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                    </svg>
+                    Submissions
+                </a>
+                <a href="#" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Students
+                </a>
+                <a href="#" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                        <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                    </svg>
+                    Reports
+                </a>
+                <a href="#" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    Settings
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-avatar">T</div>
+                <div class="user-info">
+                    <h4>Teacher</h4>
+                    <p>teacher@school.edu</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <div class="grading-header">
+                <div class="grading-header-left">
+                    <a href="#" class="back-link" onclick="goBack()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 18l-6-6 6-6"/>
+                        </svg>
+                        Back to Submissions
+                    </a>
+                    <div class="grading-title-section">
+                        <h2 class="grading-title">Grade Submission</h2>
+                        <p class="grading-subtitle" id="submissionId">Loading...</p>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="openSaveGradesModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Save Grades
+                </button>
+            </div>
+
+            <!-- Two Column Layout -->
+            <div class="grading-layout">
+                <!-- Left Column: Student & Exam Info -->
+                <div class="grading-left-column">
+                    <!-- Student Information Card -->
+                    <div class="info-section-card">
+                        <h3 class="info-section-title">Student Information</h3>
+                        <div class="student-info-large">
+                            <div class="student-avatar-large" id="studentAvatarLarge">AJ</div>
+                            <div class="student-details-large">
+                                <h4 class="student-name-large" id="studentName">Loading...</h4>
+                                <p class="student-id-large" id="studentIdDisplay">ID: ...</p>
+                            </div>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-row-label">Submitted At</span>
+                            <span class="info-row-value" id="submittedAt">...</span>
+                        </div>
+                    </div>
+
+                    <!-- Exam Information Card -->
+                    <div class="info-section-card">
+                        <h3 class="info-section-title">Exam Information</h3>
+                        <div class="info-row">
+                            <span class="info-row-label">Exam Title</span>
+                            <span class="info-row-value" id="examTitle">...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-row-label">Exam ID</span>
+                            <span class="info-row-value" id="examId">...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-row-label">Current Score</span>
+                            <div class="current-score">
+                                <span class="score-numbers" id="currentScore">0 / 0</span>
+                                <span class="score-percentage" id="currentPercentage">(0%)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Teacher Info -->
+                    <div class="teacher-info-card">
+                        <div class="teacher-avatar-small">T</div>
+                        <div class="teacher-details-small">
+                            <span class="teacher-label">Teacher</span>
+                            <span class="teacher-name">teacher@school.edu</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Questions -->
+                <div class="grading-right-column" id="questionsContainer">
+                    <!-- Questions will be rendered here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Save Grades Confirmation Modal -->
+    <div class="modal-overlay" id="saveGradesModal">
+        <div class="modal modal-save-grades">
+            <div class="modal-header-simple">
+                <h3>Save Grades?</h3>
+                <button class="modal-close-btn" onclick="closeSaveGradesModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description">You are about to save the following grades for <span id="modalStudentName" style="font-weight: 600;">Bob Smith</span>:</p>
+                
+                <div class="grades-summary">
+                    <div class="grades-summary-row">
+                        <span class="grades-summary-label">Multiple Choice:</span>
+                        <span class="grades-summary-value" id="modalMcqScore">5 marks</span>
+                    </div>
+                    <div class="grades-summary-row">
+                        <span class="grades-summary-label">Essay Questions:</span>
+                        <span class="grades-summary-value" id="modalEssayScore">0 marks</span>
+                    </div>
+                    <div class="grades-summary-row grades-summary-total">
+                        <span class="grades-summary-label">Total Score:</span>
+                        <span class="grades-summary-value-total" id="modalTotalScore">5/30 (16.7%)</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer-buttons">
+                    <button type="button" class="btn-modal-cancel" onclick="closeSaveGradesModal()">Cancel</button>
+                    <button type="button" class="btn-primary" onclick="saveGrades()">Save Grades</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock Database
+        const submissionsDatabase = {
+            'sub1001': {
+                id: 'sub1001',
+                examId: 1,
+                studentId: 'student123',
+                studentName: 'Alice Johnson',
+                studentEmail: 'alice.johnson@university.edu',
+                submittedAt: '11/6/2025, 6:30:00 PM',
+                answers: {
+                    mcq: [
+                        { questionId: 1, selectedOption: 2, isCorrect: true, points: 5 },
+                        { questionId: 2, selectedOption: 1, isCorrect: true, points: 5 }
+                    ],
+                    essay: [
+                        { 
+                            questionId: 3, 
+                            answer: 'Climate change is one of the most pressing issues of our time. It affects weather patterns, sea levels, and ecosystems globally. The primary cause is greenhouse gas emissions from human activities such as burning fossil fuels and deforestation. To address this, we need international cooperation, renewable energy adoption, and sustainable practices.',
+                            marksAwarded: 0,
+                            feedback: ''
+                        }
+                    ]
+                }
+            },
+            'sub1002': {
+                id: 'sub1002',
+                examId: 1,
+                studentId: 'student124',
+                studentName: 'Bob Smith',
+                studentEmail: 'bob.smith@university.edu',
+                submittedAt: '11/6/2025, 6:45:00 PM',
+                answers: {
+                    mcq: [
+                        { questionId: 1, selectedOption: 0, isCorrect: false, points: 0 },
+                        { questionId: 2, selectedOption: 1, isCorrect: true, points: 5 }
+                    ],
+                    essay: [
+                        { 
+                            questionId: 3, 
+                            answer: 'Climate change has significant impacts on our planet. Rising temperatures lead to melting ice caps and sea level rise. We need to reduce carbon emissions through better policies and technology.',
+                            marksAwarded: 0,
+                            feedback: ''
+                        }
+                    ]
+                }
+            }
+        };
+
+        const examsDatabase = {
+            1: {
+                id: 1,
+                examId: "3123",
+                title: "3131",
+                questions: [
+                    { 
+                        id: 1, 
+                        type: "mcq", 
+                        points: 5, 
+                        question: "What is the capital of France?", 
+                        options: ["London", "Berlin", "Paris", "Madrid"], 
+                        correctAnswer: 2 
+                    },
+                    { 
+                        id: 2, 
+                        type: "mcq", 
+                        points: 5, 
+                        question: "Which planet is known as the Red Planet?", 
+                        options: ["Venus", "Mars", "Jupiter", "Saturn"], 
+                        correctAnswer: 1 
+                    },
+                    { 
+                        id: 3, 
+                        type: "essay", 
+                        points: 20, 
+                        question: "Discuss the impact of climate change on global ecosystems and propose three practical solutions that governments can implement to mitigate its effects.", 
+                        rubric: "Content relevance (40%), Critical thinking (30%), Examples and evidence (20%), Writing quality (10%)"
+                    }
+                ]
+            }
+        };
+
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const submissionId = urlParams.get('submissionId') || 'sub1001';
+        const examId = urlParams.get('examId') || 1;
+
+        let currentSubmission = submissionsDatabase[submissionId];
+        let currentExam = examsDatabase[examId];
+        let essayGrades = {};
+
+        function init() {
+            if (!currentSubmission || !currentExam) {
+                alert('Submission not found');
+                window.history.back();
+                return;
+            }
+            
+            // Initialize essay grades from database
+            currentSubmission.answers.essay.forEach(essay => {
+                essayGrades[essay.questionId] = {
+                    marks: essay.marksAwarded,
+                    feedback: essay.feedback
+                };
+            });
+
+            renderSubmissionInfo();
+            renderQuestions();
+            updateScores();
+        }
+
+        function renderSubmissionInfo() {
+            document.getElementById('submissionId').textContent = `Submission ID: ${currentSubmission.id}`;
+            document.getElementById('studentName').textContent = currentSubmission.studentName;
+            document.getElementById('studentIdDisplay').textContent = `ID: ${currentSubmission.studentId}`;
+            document.getElementById('studentAvatarLarge').textContent = getInitials(currentSubmission.studentName);
+            document.getElementById('submittedAt').textContent = currentSubmission.submittedAt;
+            document.getElementById('examTitle').textContent = currentExam.title;
+            document.getElementById('examId').textContent = currentExam.examId;
+        }
+
+        function getInitials(name) {
+            return name.split(' ').map(n => n[0]).join('').toUpperCase();
+        }
+
+        function renderQuestions() {
+            const container = document.getElementById('questionsContainer');
+            let html = '';
+
+            // MCQ Section
+            const mcqQuestions = currentExam.questions.filter(q => q.type === 'mcq');
+            if (mcqQuestions.length > 0) {
+                const mcqAnswers = currentSubmission.answers.mcq;
+                const mcqTotalPoints = mcqQuestions.reduce((sum, q) => sum + q.points, 0);
+                const mcqEarnedPoints = mcqAnswers.reduce((sum, a) => sum + (a.isCorrect ? a.points : 0), 0);
+
+                html += `
+                    <div class="grading-section">
+                        <div class="grading-section-header">
+                            <h3 class="grading-section-title">Multiple Choice Questions</h3>
+                            <span class="grading-section-score">Score: ${mcqEarnedPoints}/${mcqTotalPoints}</span>
+                        </div>
+                `;
+
+                mcqQuestions.forEach((question, index) => {
+                    const answer = mcqAnswers.find(a => a.questionId === question.id);
+                    const isCorrect = answer && answer.isCorrect;
+                    const selectedOption = answer ? answer.selectedOption : null;
+
+                    html += `
+                        <div class="grading-question-card">
+                            <div class="grading-question-header">
+                                <div class="grading-question-number">${index + 1}</div>
+                                <span class="grading-question-points">${question.points} marks</span>
+                                <span class="grading-status-badge ${isCorrect ? 'correct' : 'incorrect'}">${isCorrect ? 'Correct' : 'Incorrect'}</span>
+                            </div>
+                            <div class="grading-question-content">
+                                <p class="grading-question-text">${question.question}</p>
+                                <div class="grading-options-list">
+                    `;
+
+                    question.options.forEach((option, optIndex) => {
+                        const isSelected = selectedOption === optIndex;
+                        const isCorrectOption = question.correctAnswer === optIndex;
+                        let optionClass = 'grading-option';
+                        if (isSelected && isCorrectOption) {
+                            optionClass += ' grading-option-selected grading-option-correct';
+                        } else if (isSelected && !isCorrectOption) {
+                            optionClass += ' grading-option-selected grading-option-wrong';
+                        } else if (!isSelected && isCorrectOption) {
+                            optionClass += ' grading-option-correct';
+                        }
+
+                        html += `
+                            <div class="${optionClass}">
+                                <div class="grading-option-label">${String.fromCharCode(65 + optIndex)}.</div>
+                                <span class="grading-option-text">${option}</span>
+                                ${(isSelected || isCorrectOption) ? `
+                                    <svg class="grading-option-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        ${isCorrectOption ? '<polyline points="20 6 9 17 4 12"/>' : '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'}
+                                    </svg>
+                                ` : ''}
+                            </div>
+                        `;
+                    });
+
+                    html += `
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+            }
+
+            // Essay Section
+            const essayQuestions = currentExam.questions.filter(q => q.type === 'essay');
+            if (essayQuestions.length > 0) {
+                const essayAnswers = currentSubmission.answers.essay;
+                const essayTotalPoints = essayQuestions.reduce((sum, q) => sum + q.points, 0);
+                const essayEarnedPoints = essayAnswers.reduce((sum, a) => sum + a.marksAwarded, 0);
+
+                html += `
+                    <div class="grading-section">
+                        <div class="grading-section-header">
+                            <h3 class="grading-section-title">Essay Questions - Manual Grading Required</h3>
+                            <span class="grading-section-score">Essay Score: <span id="essayTotalScore">${essayEarnedPoints}</span>/${essayTotalPoints}</span>
+                        </div>
+                `;
+
+                essayQuestions.forEach((question, index) => {
+                    const answer = essayAnswers.find(a => a.questionId === question.id);
+                    const currentMarks = essayGrades[question.id]?.marks || 0;
+                    const currentFeedback = essayGrades[question.id]?.feedback || '';
+
+                    html += `
+                        <div class="grading-question-card">
+                            <div class="grading-question-header">
+                                <div class="grading-question-number">${mcqQuestions.length + index + 1}</div>
+                                <span class="grading-question-points">Max ${question.points} marks</span>
+                            </div>
+                            <div class="grading-question-content">
+                                <p class="grading-question-text">${question.question}</p>
+                                
+                                <div class="essay-answer-section">
+                                    <h4 class="essay-section-label">Student Answer:</h4>
+                                    <div class="essay-answer-text">
+                                        <p>${answer ? answer.answer : 'No answer provided'}</p>
+                                    </div>
+                                </div>
+
+                                <div class="essay-grading-section">
+                                    <div class="essay-grading-row">
+                                        <div class="essay-grading-input-group">
+                                            <label for="essayMarks${question.id}">Marks Awarded</label>
+                                            <input type="number" id="essayMarks${question.id}" class="essay-marks-input" min="0" max="${question.points}" value="${currentMarks}" oninput="updateEssayGrade(${question.id}, ${question.points})">
+                                        </div>
+                                        <div class="essay-feedback-group">
+                                            <label for="essayFeedback${question.id}">Feedback (Optional)</label>
+                                            <textarea id="essayFeedback${question.id}" class="essay-feedback-input" placeholder="Add feedback for the student..." rows="3">${currentFeedback}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+            }
+
+            // Teacher Info at bottom
+            html += `
+                <div class="teacher-info-card">
+                    <div class="teacher-avatar-small">T</div>
+                    <div class="teacher-details-small">
+                        <span class="teacher-label">Teacher</span>
+                        <span class="teacher-name">teacher@school.edu</span>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function updateEssayGrade(questionId, maxPoints) {
+            const marksInput = document.getElementById(`essayMarks${questionId}`);
+            const feedbackInput = document.getElementById(`essayFeedback${questionId}`);
+            
+            let marks = parseInt(marksInput.value) || 0;
+            if (marks > maxPoints) marks = maxPoints;
+            if (marks < 0) marks = 0;
+            marksInput.value = marks;
+
+            essayGrades[questionId] = {
+                marks: marks,
+                feedback: feedbackInput.value
+            };
+
+            updateScores();
+        }
+
+        function updateScores() {
+            // Calculate MCQ score
+            const mcqAnswers = currentSubmission.answers.mcq;
+            const mcqScore = mcqAnswers.reduce((sum, a) => sum + (a.isCorrect ? a.points : 0), 0);
+
+            // Calculate Essay score
+            let essayScore = 0;
+            Object.values(essayGrades).forEach(grade => {
+                essayScore += grade.marks;
+            });
+
+            // Update essay total display
+            const essayTotalElement = document.getElementById('essayTotalScore');
+            if (essayTotalElement) {
+                essayTotalElement.textContent = essayScore;
+            }
+
+            // Calculate total
+            const totalPoints = currentExam.questions.reduce((sum, q) => sum + q.points, 0);
+            const earnedPoints = mcqScore + essayScore;
+            const percentage = totalPoints > 0 ? ((earnedPoints / totalPoints) * 100).toFixed(1) : 0;
+
+            // Update current score display
+            document.getElementById('currentScore').textContent = `${earnedPoints} / ${totalPoints}`;
+            document.getElementById('currentPercentage').textContent = `(${percentage}%)`;
+        }
+
+        function openSaveGradesModal() {
+            // Calculate scores
+            const mcqAnswers = currentSubmission.answers.mcq;
+            const mcqScore = mcqAnswers.reduce((sum, a) => sum + (a.isCorrect ? a.points : 0), 0);
+            
+            let essayScore = 0;
+            Object.values(essayGrades).forEach(grade => {
+                essayScore += grade.marks;
+            });
+
+            const totalPoints = currentExam.questions.reduce((sum, q) => sum + q.points, 0);
+            const earnedPoints = mcqScore + essayScore;
+            const percentage = totalPoints > 0 ? ((earnedPoints / totalPoints) * 100).toFixed(1) : 0;
+
+            // Update modal content
+            document.getElementById('modalStudentName').textContent = currentSubmission.studentName;
+            document.getElementById('modalMcqScore').textContent = `${mcqScore} marks`;
+            document.getElementById('modalEssayScore').textContent = `${essayScore} marks`;
+            document.getElementById('modalTotalScore').textContent = `${earnedPoints}/${totalPoints} (${percentage}%)`;
+
+            document.getElementById('saveGradesModal').classList.add('active');
+        }
+
+        function closeSaveGradesModal() {
+            document.getElementById('saveGradesModal').classList.remove('active');
+        }
+
+        function saveGrades() {
+            // Update submission in database
+            currentSubmission.answers.essay.forEach(essay => {
+                if (essayGrades[essay.questionId]) {
+                    essay.marksAwarded = essayGrades[essay.questionId].marks;
+                    essay.feedback = essayGrades[essay.questionId].feedback;
+                }
+            });
+
+            alert('Grades saved successfully!');
+            closeSaveGradesModal();
+            
+            // Redirect back to exam details
+            setTimeout(() => {
+                window.location.href = `examDetails.html?id=${examId}`;
+            }, 500);
+        }
+
+        function goBack() {
+            window.location.href = `examDetails.html?id=${examId}`;
+        }
+
+        // Initialize page
+        init();
+    </script>
+</body>
+</html>
