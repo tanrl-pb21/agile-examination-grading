@@ -32,3 +32,16 @@ class ExamService:
             row = conn.execute(sql, (exam_id,)).fetchone()
 
         return row
+    
+
+    def get_all_exams(self):
+        sql = """
+            SELECT id, title, start_time, end_time
+            FROM exams
+            ORDER BY start_time;
+        """
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql)
+                rows = cur.fetchall()
+        return rows

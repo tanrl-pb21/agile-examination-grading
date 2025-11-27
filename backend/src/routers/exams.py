@@ -19,3 +19,12 @@ def get_exam(exam_id: int):
     if not exam:
         raise HTTPException(404, "Exam not found")
     return exam
+
+
+@router.get("")
+def get_all_exams():
+    exams = service.get_all_exams()
+    if not exams:
+        # optional: return empty list or 404
+        return []
+    return exams

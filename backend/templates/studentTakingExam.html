@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taking Exam - Student Portal</title>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+    <div class="exam-taking-container">
+        <!-- Exam Header -->
+        <div class="exam-header-bar">
+            <div class="exam-header-left">
+                <h2 class="exam-title" id="examTitleHeader">Mathematics Final Examination</h2>
+                <p class="exam-id-text">Exam ID: <span id="examIdHeader">MATH-FINAL-2025</span></p>
+            </div>
+            <div class="exam-header-right">
+                <div class="exam-progress">
+                    <span id="examProgressText">1/3</span>
+                </div>
+                <button class="btn-submit-exam" onclick="submitExam()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Submit Exam
+                </button>
+            </div>
+        </div>
+
+        <!-- Questions Container -->
+        <div class="questions-container" id="questionsContainer">
+            <!-- Questions will be generated here -->
+        </div>
+
+        <!-- Submit Button Bottom -->
+        <div class="exam-submit-footer">
+            <button class="btn-submit-exam-large" onclick="submitExam()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Submit Exam
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const examQuestionsData = [
+            {
+                id: 1,
+                type: 'Multiple Choice',
+                marks: 5,
+                questionNumber: 1,
+                totalQuestions: 3,
+                question: 'What is the capital of France?',
+                options: [
+                    { id: 'A', text: 'London' },
+                    { id: 'B', text: 'Paris' },
+                    { id: 'C', text: 'Berlin' },
+                    { id: 'D', text: 'Madrid' }
+                ]
+            },
+            {
+                id: 2,
+                type: 'Multiple Choice',
+                marks: 5,
+                questionNumber: 2,
+                totalQuestions: 3,
+                question: 'Which planet is known as the Red Planet?',
+                options: [
+                    { id: 'A', text: 'Venus' },
+                    { id: 'B', text: 'Mars' },
+                    { id: 'C', text: 'Jupiter' },
+                    { id: 'D', text: 'Saturn' }
+                ]
+            },
+            {
+                id: 3,
+                type: 'Essay Question',
+                marks: 20,
+                questionNumber: 3,
+                totalQuestions: 3,
+                question: 'Discuss the impact of climate change on global ecosystems and propose three practical solutions that governments can implement to mitigate its effects.',
+                note: 'Write a detailed answer. This will be manually graded by your instructor.'
+            }
+        ];
+
+        let selectedAnswers = {};
+
+        // Render exam questions
+        function renderExamQuestions() {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = examQuestionsData.map(q => {
+                if (q.type === 'Multiple Choice') {
+                    return `
+                        <div class="question-card-student">
+                            <div class="question-header-student">
+                                <div class="question-type-badge mcq-badge">
+                                    <span class="question-number-circle">${q.questionNumber}</span>
+                                    <span>${q.type}</span>
+                                </div>
+                                <span class="question-marks">${q.marks} marks</span>
+                                <span class="question-counter">Question ${q.questionNumber} of ${q.totalQuestions}</span>
+                            </div>
+                            <div class="question-content-student">
+                                <h3 class="question-text-student">${q.question}</h3>
+                                <div class="options-list-student">
+                                    ${q.options.map(opt => `
+                                        <label class="option-student ${selectedAnswers[q.id] === opt.id ? 'selected' : ''}">
+                                            <input type="radio" name="question${q.id}" value="${opt.id}" onchange="selectAnswer(${q.id}, '${opt.id}')">
+                                            <span class="option-radio-custom"></span>
+                                            <span class="option-label">${opt.id}.</span>
+                                            <span class="option-text">${opt.text}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="question-card-student">
+                            <div class="question-header-student">
+                                <div class="question-type-badge essay-badge">
+                                    <span class="question-number-circle">${q.questionNumber}</span>
+                                    <span>${q.type}</span>
+                                </div>
+                                <span class="question-marks">${q.marks} marks</span>
+                                <span class="question-counter">Question ${q.questionNumber} of ${q.totalQuestions}</span>
+                            </div>
+                            <div class="question-content-student">
+                                <h3 class="question-text-student">${q.question}</h3>
+                                <textarea class="essay-textarea" placeholder="Type your answer here..." rows="10"></textarea>
+                                <p class="essay-note">${q.note}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+
+            updateProgress();
+        }
+
+        // Select answer for MCQ
+        function selectAnswer(questionId, optionId) {
+            selectedAnswers[questionId] = optionId;
+            renderExamQuestions();
+        }
+
+        // Update progress
+        function updateProgress() {
+            const answered = Object.keys(selectedAnswers).length;
+            const total = examQuestionsData.filter(q => q.type === 'Multiple Choice').length;
+            document.getElementById('examProgressText').textContent = `${answered}/${total}`;
+        }
+
+        // Submit exam
+        function submitExam() {
+            if (confirm('Are you sure you want to submit your exam? You cannot change your answers after submission.')) {
+                alert('Exam submitted successfully!');
+                // Redirect to exam list or results page
+                window.location.href = 'exam-list.html';
+            }
+        }
+
+        // Initialize
+        renderExamQuestions();
+    </script>
+</body>
+</html>
