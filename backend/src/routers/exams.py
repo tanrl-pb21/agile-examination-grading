@@ -114,7 +114,6 @@ def update_exam(exam_id: int, exam: ExamCreate):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
 @router.get("/{exam_id}")
 def get_exam(exam_id: int):
     exam = service.get_exam(exam_id)

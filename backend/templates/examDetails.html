@@ -16,7 +16,7 @@
             </div>
             
             <nav class="sidebar-nav">
-                <a href="examManagement.html" class="nav-item active">
+                <a href="/examManagement" class="nav-item active">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="18" height="18" rx="2"/>
                         <path d="M9 9h6M9 13h6M9 17h4"/>
@@ -62,7 +62,7 @@
             <!-- Page Header with Back Button -->
             <div class="exam-header">
                 <div class="exam-header-left">
-                    <a href="examManagement.html" class="back-btn">
+                    <a href="/" class="back-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M15 18l-6-6 6-6"/>
                         </svg>
@@ -346,7 +346,7 @@
         let selectedCorrectAnswer = 1;
 
         function init() {
-            if (!currentExam) { alert('Exam not found'); window.location.href = 'examManagement.html'; return; }
+            if (!currentExam) { alert('Exam not found'); window.location.href = '/'; return; }
             renderExamInfo();
             renderQuestionStats();
             renderQuestions();
@@ -633,7 +633,7 @@
             }
 
             // Redirect with URL query parameters
-            window.location.href = `examGrading.html?submissionId=sub${submission.id}&examId=${examId}`;
+            window.location.href = `examGrading?submissionId=sub${submission.id}&examId=${examId}`;
         }
 
 
