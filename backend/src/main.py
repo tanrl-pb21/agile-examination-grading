@@ -14,9 +14,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Serve static files (/static/style.css, /static/script.js)
 app.mount(
-    "/static",
-    StaticFiles(directory=os.path.join(BASE_DIR, "static")),
-    name="static"
+    "/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static"
 )
 
 # HTML templates folder
@@ -27,5 +25,3 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
-
-

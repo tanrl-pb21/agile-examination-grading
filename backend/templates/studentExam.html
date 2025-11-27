@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Examinations - Student Portal</title>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+    <div class="student-container">
+        <!-- Header -->
+        <div class="student-header">
+            <div>
+                <h1 class="student-main-title">My Examinations</h1>
+                <p class="student-subtitle">View and take your scheduled exams</p>
+            </div>
+            <div class="current-time">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+                <span>Current Time: <span id="currentTime">7:23:02 AM</span></span>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="student-search-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" id="examSearchInput" placeholder="Search by title, exam ID, or course...">
+        </div>
+
+        <!-- Exam Cards Grid -->
+        <div class="exam-cards-grid" id="examCardsContainer">
+            <!-- Exam cards will be generated here -->
+        </div>
+
+        <!-- Exam Rules -->
+        <div class="exam-rules-box">
+            <div class="exam-rules-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>Exam Rules</span>
+            </div>
+            <ul class="exam-rules-list">
+                <li>Exams can only be opened during the scheduled time window</li>
+                <li>You must complete the exam before the end time</li>
+                <li>Once started, the exam must be completed in one session</li>
+                <li>Make sure you have a stable internet connection</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Mock exam data
+        const examsData = [
+            {
+                id: 1,
+                title: 'Midterm Examination',
+                examId: 'MATH-MID-2025',
+                course: 'MATH101 - Introduction to Mathematics',
+                date: '2025-11-06',
+                time: '09:00 - 11:00 (120 min)',
+                totalMarks: 100,
+                endTime: '11:00 on 2025-11-06',
+                status: 'ended'
+            },
+            {
+                id: 2,
+                title: 'Final Examination',
+                examId: 'MATH-FINAL-2025',
+                course: 'MATH101 - Introduction to Mathematics',
+                date: '2025-11-15',
+                time: '09:00 - 11:00 (120 min)',
+                totalMarks: 150,
+                endTime: '11:00 on 2025-11-15',
+                status: 'ended'
+            },
+            {
+                id: 3,
+                title: 'Physics Midterm',
+                examId: 'PHY-MID-2025',
+                course: 'PHY201 - Physics II',
+                date: '2025-10-20',
+                time: '14:00 - 16:00 (120 min)',
+                totalMarks: 100,
+                endTime: '16:00 on 2025-10-20',
+                status: 'ended'
+            }
+        ];
+
+        // Update current time
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { hour12: true });
+            document.getElementById('currentTime').textContent = timeString;
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Render exam cards
+        function renderExamCards() {
+            const container = document.getElementById('examCardsContainer');
+            container.innerHTML = examsData.map(exam => `
+                <div class="exam-card">
+                    <div class="exam-card-header">
+                        <h3 class="exam-card-title">${exam.title}</h3>
+                        <span class="exam-status-badge status-${exam.status}">${exam.status.charAt(0).toUpperCase() + exam.status.slice(1)}</span>
+                    </div>
+                    <div class="exam-card-id">${exam.examId}</div>
+                    
+                    <div class="exam-card-details">
+                        <div class="exam-detail-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <path d="M9 9h6M9 13h6M9 17h4"/>
+                            </svg>
+                            <span>${exam.course}</span>
+                        </div>
+                        <div class="exam-detail-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            <span>${exam.date}</span>
+                        </div>
+                        <div class="exam-detail-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                            <span>${exam.time}</span>
+                        </div>
+                        <div class="exam-detail-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="12" y1="18" x2="12" y2="12"/>
+                                <line x1="9" y1="15" x2="15" y2="15"/>
+                            </svg>
+                            <span>Total Marks: ${exam.totalMarks}</span>
+                        </div>
+                    </div>
+
+                    <div class="exam-end-notice">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        <span>Exam ended at ${exam.endTime}</span>
+                    </div>
+
+                    <button class="exam-locked-btn" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        Exam Locked
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Initialize
+        renderExamCards();
+    </script>
+</body>
+</html>
