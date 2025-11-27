@@ -57,10 +57,16 @@ def student_exam_list(request: Request):
     )
 
 # Student: exam taking
+# @app.get("/studentTakingExam", response_class=HTMLResponse)
+# def student_taking_exam(request: Request):
+#     return templates.TemplateResponse(
+#         "studentTakingExam.html", {"request": request}
+#     )
 @app.get("/studentTakingExam", response_class=HTMLResponse)
-def student_taking_exam(request: Request):
+def student_taking_exam(request: Request, exam_code: str):
     return templates.TemplateResponse(
-        "studentTakingExam.html", {"request": request}
+        "studentTakingExam.html",
+        {"request": request, "exam_code": exam_code}
     )
 
 

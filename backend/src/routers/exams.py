@@ -137,3 +137,11 @@ def delete_exam(exam_id: int):
         return {"message": "Exam deleted successfully"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/code/{exam_code}/duration")
+def get_exam_duration_by_code(exam_code: str):
+    try:
+        return service.get_exam_duration_by_code(exam_code)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

@@ -1,6 +1,6 @@
 from src.db import get_conn
 from psycopg.rows import dict_row
-from datetime import datetime, date, time
+from datetime import datetime, date, time,timezone
 
 
 def validate_date_obj(dt: date):
@@ -140,3 +140,46 @@ class ExamService:
             raise ValueError(f"Exam with id {exam_id} not found")
         
         return row
+
+
+    def get_exam_duration_by_code(self, exam_code: str) -> dict:
+        sql = """
+            SELECT date, start_time, duration
+            FROM exams
+            WHERE exam_code = %s
+        """
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (exam_code,))
+                row = cur.fetchone()
+
+        if not row:
+            raise ValueError("Exam not found")
+
+        exam_date = row["date"]
+        start_time = row["start_time"]
+        duration_minutes = row["duration"]  # <-- stored as minutes
+
+        # Convert strings
+        exam_date = datetime.strptime(str(exam_date), "%Y-%m-%d").date()
+        start_time = datetime.strptime(str(start_time), "%H:%M:%S").time()
+
+        # Build start datetime
+        start_dt = datetime.combine(exam_date, start_time, timezone.utc)
+        now = datetime.now(timezone.utc)
+
+        # Convert duration to seconds
+        duration_seconds = duration_minutes * 60
+
+        # Calculate elapsed + remaining
+        elapsed_seconds = max(int((now - start_dt).total_seconds()), 0)
+        remaining_seconds = max(duration_seconds - elapsed_seconds, 0)
+
+        return {
+            "duration_seconds": duration_seconds,
+            "remaining_seconds": remaining_seconds,
+            "date": exam_date.isoformat(),
+            "start_time": start_time.isoformat(),
+        }
+
