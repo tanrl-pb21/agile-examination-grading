@@ -191,25 +191,57 @@
             await Promise.all([loadCourses(), loadExams()]);
         }
 
-        async function loadCourses() {
+       async function loadCourses() {
             try {
-                console.log('Fetching courses...');
-                const res = await axios.get('/courses');
+                console.log('Fetching courses from /courses...');
                 
-                if (!res.data) {
-                    throw new Error('No data returned from courses endpoint');
+                // Reduce timeout to 5 seconds for courses
+                const res = await axios.get('/courses', {
+                    timeout: 5000,  // 5 seconds instead of 30
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                console.log('Courses response:', res.data);
+                
+                // Handle different response formats
+                if (Array.isArray(res.data)) {
+                    courses = res.data;
+                } else if (res.data?.data && Array.isArray(res.data.data)) {
+                    courses = res.data.data;
+                } else if (res.data?.courses && Array.isArray(res.data.courses)) {
+                    courses = res.data.courses;
+                } else {
+                    console.warn('Unexpected response format:', res.data);
+                    courses = [];
                 }
-
-                courses = Array.isArray(res.data) ? res.data : [];
-                console.log('Courses loaded:', courses);
-
+                
+                console.log('Courses loaded:', courses.length, 'courses');
                 updateCourseSelect();
+                
             } catch (err) {
-                console.error('Error loading courses:', err.message);
-                showError('Failed to load courses. Please refresh the page.');
-                // Populate with empty option
+                console.error('Error details:', {
+                    message: err.message,
+                    code: err.code,
+                    status: err.response?.status,
+                    config: err.config?.url
+                });
+                
+                if (err.code === 'ECONNABORTED') {
+                    showError('⏱️ Courses request timed out. Backend may not be responding. Check if server is running on port 8000');
+                } else if (err.response?.status === 404) {
+                    showError('❌ /courses endpoint not found. Check your backend routes.');
+                } else if (err.response?.status >= 500) {
+                    showError('❌ Server error loading courses. Check backend logs.');
+                } else if (err.message.includes('Network')) {
+                    showError('❌ Network error. Check if backend is running.');
+                } else {
+                    showError('❌ Failed to load courses: ' + err.message);
+                }
+                
                 const courseSelect = document.getElementById('courseCode');
-                courseSelect.innerHTML = '<option value="">Unable to load courses</option>';
+                courseSelect.innerHTML = '<option value="">Backend not responding</option>';
             }
         }
 
@@ -263,29 +295,40 @@
                     : error.message;
                 tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red">Failed to load exams: ${errorMsg}</td></tr>`;
             }
-
-            renderExams();
         }
+
+        // In your saveExam function, replace the time reading part:
 
         async function saveExam(e) {
             e.preventDefault();
 
             const editId = document.getElementById('examEditId').value;
-            const startTime = document.getElementById('examStartTime').value;
-            const endTime = document.getElementById('examEndTime').value;
+            
+            // Get raw time values from input (format: HH:MM in 24-hour)
+            const startTimeRaw = document.getElementById('examStartTime').value;
+            const endTimeRaw = document.getElementById('examEndTime').value;
+            
             const errorContainer = document.getElementById('errorContainer');
 
             // Clear previous errors
             errorContainer.style.display = 'none';
             errorContainer.innerHTML = '';
 
-            // Validate times
-            if (!startTime || !endTime) {
+            // Validate times exist
+            if (!startTimeRaw || !endTimeRaw) {
                 showFormError('Start time and end time are required');
                 return;
             }
 
-            if (startTime >= endTime) {
+            // Validate time format (should be HH:MM)
+            const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+            if (!timeRegex.test(startTimeRaw) || !timeRegex.test(endTimeRaw)) {
+                showFormError('Time must be in valid HH:MM format');
+                return;
+            }
+
+            // Compare times
+            if (startTimeRaw >= endTimeRaw) {
                 showFormError('End time must be after start time');
                 return;
             }
@@ -294,8 +337,8 @@
                 title: document.getElementById('examTitle').value.trim(),
                 exam_code: document.getElementById('examIdInput').value.trim(),
                 date: document.getElementById('examDate').value,
-                start_time: startTime,
-                end_time: endTime,
+                start_time: startTimeRaw,  // Send as HH:MM format
+                end_time: endTimeRaw,      // Send as HH:MM format
                 status: 'scheduled',
                 course: document.getElementById('courseCode').value,
             };
@@ -333,6 +376,22 @@
             } catch (error) {
                 console.error('Save exam error:', error);
                 let errorMsg = 'An error occurred while saving the exam';
+
+                const startTimeRaw = document.getElementById('examStartTime').value;
+                const endTimeRaw = document.getElementById('examEndTime').value;
+
+                // DEBUG: Log exactly what we're sending
+                console.log('=== TIME DEBUG ===');
+                console.log('Start time raw value:', startTimeRaw);
+                console.log('Start time type:', typeof startTimeRaw);
+                console.log('Start time length:', startTimeRaw.length);
+                console.log('End time raw value:', endTimeRaw);
+                console.log('=== END DEBUG ===');
+
+                // Check if it matches HH:MM format
+                const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                console.log('Start time matches HH:MM?', timeRegex.test(startTimeRaw));
+                console.log('End time matches HH:MM?', timeRegex.test(endTimeRaw));
 
                 if (error.response) {
                     if (error.response.status === 422) {

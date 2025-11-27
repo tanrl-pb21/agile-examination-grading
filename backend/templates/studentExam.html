@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Examinations - Student Portal</title>
     <link rel="stylesheet" href="../static/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
 </head>
 <body>
     <div class="student-container">
-        <!-- Header -->
         <div class="student-header">
             <div>
                 <h1 class="student-main-title">My Examinations</h1>
@@ -19,25 +19,28 @@
                     <circle cx="12" cy="12" r="10"/>
                     <path d="M12 6v6l4 2"/>
                 </svg>
-                <span>Current Time: <span id="currentTime">7:23:02 AM</span></span>
+                <span>Current Time: <span id="currentTime">Loading...</span></span>
             </div>
         </div>
 
-        <!-- Search Bar -->
         <div class="student-search-bar">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/>
                 <path d="M21 21l-4.35-4.35"/>
             </svg>
-            <input type="text" id="examSearchInput" placeholder="Search by title, exam ID, or course...">
+            <input type="text" id="examSearchInput" placeholder="Search by title, exam code, or course...">
         </div>
 
-        <!-- Exam Cards Grid -->
-        <div class="exam-cards-grid" id="examCardsContainer">
-            <!-- Exam cards will be generated here -->
+        <div id="loadingState" style="text-align: center; padding: 40px; display: none;">
+            <p>Loading exams...</p>
         </div>
 
-        <!-- Exam Rules -->
+        <div id="errorState" style="text-align: center; padding: 40px; color: #ef4444; display: none;">
+            <p id="errorMessage">Failed to load exams. Please try again.</p>
+        </div>
+
+        <div class="exam-cards-grid" id="examCardsContainer"></div>
+
         <div class="exam-rules-box">
             <div class="exam-rules-header">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -57,119 +60,240 @@
     </div>
 
     <script>
-        // Mock exam data
-        const examsData = [
-            {
-                id: 1,
-                title: 'Midterm Examination',
-                examId: 'MATH-MID-2025',
-                course: 'MATH101 - Introduction to Mathematics',
-                date: '2025-11-06',
-                time: '09:00 - 11:00 (120 min)',
-                totalMarks: 100,
-                endTime: '11:00 on 2025-11-06',
-                status: 'ended'
-            },
-            {
-                id: 2,
-                title: 'Final Examination',
-                examId: 'MATH-FINAL-2025',
-                course: 'MATH101 - Introduction to Mathematics',
-                date: '2025-11-15',
-                time: '09:00 - 11:00 (120 min)',
-                totalMarks: 150,
-                endTime: '11:00 on 2025-11-15',
-                status: 'ended'
-            },
-            {
-                id: 3,
-                title: 'Physics Midterm',
-                examId: 'PHY-MID-2025',
-                course: 'PHY201 - Physics II',
-                date: '2025-10-20',
-                time: '14:00 - 16:00 (120 min)',
-                totalMarks: 100,
-                endTime: '16:00 on 2025-10-20',
-                status: 'ended'
-            }
-        ];
+        let examsData = [];
+        let allExamsData = [];
+        // Get student ID from session, URL parameter, or authentication
+        // For example, you might get this from a logged-in user session
+        const studentId = getStudentId(); // You'll need to implement this function
 
-        // Update current time
+        function getStudentId() {
+            // Option 1: Get from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('student_id');
+            if (id) return id;
+            
+            // Option 2: Get from session storage
+            const sessionId = sessionStorage.getItem('student_id');
+            if (sessionId) return sessionId;
+            
+            // Option 3: Get from a global variable set by your auth system
+            // return window.currentUserId;
+            
+            // Default fallback - you should replace this with your auth logic
+            return 1;
+        }
+
+        async function fetchExams() {
+            const loadingState = document.getElementById('loadingState');
+            const errorState = document.getElementById('errorState');
+            const container = document.getElementById('examCardsContainer');
+
+            try {
+                loadingState.style.display = 'block';
+                errorState.style.display = 'none';
+                container.innerHTML = '';
+
+                // Updated to fetch exams for specific student
+                const response = await axios.get(`/exams/student/${studentId}`);
+                examsData = response.data;
+                allExamsData = response.data;
+
+                loadingState.style.display = 'none';
+                renderExamCards();
+            } catch (error) {
+                console.error('Error fetching exams:', error);
+                loadingState.style.display = 'none';
+                errorState.style.display = 'block';
+                document.getElementById('errorMessage').textContent = 
+                    error.response?.data?.detail || 'Failed to load exams. Please try again.';
+            }
+        }
+
+        function isExamAvailable(exam) {
+            const now = new Date();
+            const startDateTime = new Date(`${exam.date} ${exam.start_time}`);
+            const endDateTime = new Date(`${exam.date} ${exam.end_time}`);
+            return now >= startDateTime && now <= endDateTime;
+        }
+
+        function getExamStatus(exam) {
+            const now = new Date();
+            const startDateTime = new Date(`${exam.date} ${exam.start_time}`);
+            const endDateTime = new Date(`${exam.date} ${exam.end_time}`);
+
+            if (now < startDateTime) {
+                return 'upcoming';
+            } else if (now > endDateTime) {
+                return 'ended';
+            } else {
+                return 'active';
+            }
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function formatTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':');
+            const date = new Date();
+            date.setHours(parseInt(hours), parseInt(minutes));
+            return date.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        function handleExamAccess(examId) {
+            const exam = allExamsData.find(e => e.id === examId);
+            if (!exam) return;
+
+            if (isExamAvailable(exam)) {
+                window.location.href = `/exam/${exam.id}`;
+            } else {
+                const now = new Date();
+                const startDateTime = new Date(`${exam.date} ${exam.start_time}`);
+                const endDateTime = new Date(`${exam.date} ${exam.end_time}`);
+
+                if (now < startDateTime) {
+                    alert(`This exam is not yet available. It will start at ${formatTime(exam.start_time)} on ${formatDate(exam.date)}`);
+                } else {
+                    alert('This exam has ended and is no longer available.');
+                }
+            }
+        }
+
         function updateTime() {
             const now = new Date();
             const timeString = now.toLocaleTimeString('en-US', { hour12: true });
             document.getElementById('currentTime').textContent = timeString;
+            
+            if (now.getSeconds() === 0) {
+                renderExamCards();
+            }
         }
-        setInterval(updateTime, 1000);
-        updateTime();
 
-        // Render exam cards
         function renderExamCards() {
             const container = document.getElementById('examCardsContainer');
-            container.innerHTML = examsData.map(exam => `
-                <div class="exam-card">
-                    <div class="exam-card-header">
-                        <h3 class="exam-card-title">${exam.title}</h3>
-                        <span class="exam-status-badge status-${exam.status}">${exam.status.charAt(0).toUpperCase() + exam.status.slice(1)}</span>
-                    </div>
-                    <div class="exam-card-id">${exam.examId}</div>
-                    
-                    <div class="exam-card-details">
-                        <div class="exam-detail-row">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                <path d="M9 9h6M9 13h6M9 17h4"/>
-                            </svg>
-                            <span>${exam.course}</span>
-                        </div>
-                        <div class="exam-detail-row">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                            </svg>
-                            <span>${exam.date}</span>
-                        </div>
-                        <div class="exam-detail-row">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 6v6l4 2"/>
-                            </svg>
-                            <span>${exam.time}</span>
-                        </div>
-                        <div class="exam-detail-row">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="12" y1="18" x2="12" y2="12"/>
-                                <line x1="9" y1="15" x2="15" y2="15"/>
-                            </svg>
-                            <span>Total Marks: ${exam.totalMarks}</span>
-                        </div>
-                    </div>
+            
+            if (examsData.length === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">No exams available for your enrolled courses.</p>';
+                return;
+            }
 
-                    <div class="exam-end-notice">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 16v-4M12 8h.01"/>
-                        </svg>
-                        <span>Exam ended at ${exam.endTime}</span>
-                    </div>
+            container.innerHTML = examsData.map(exam => {
+                const status = getExamStatus(exam);
+                const isAvailable = isExamAvailable(exam);
+                
+                return `
+                    <div class="exam-card">
+                        <div class="exam-card-header">
+                            <h3 class="exam-card-title">${exam.title}</h3>
+                            <span class="exam-status-badge status-${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
+                        </div>
+                        <div class="exam-card-id">${exam.exam_code}</div>
+                        
+                        <div class="exam-card-details">
+                            <div class="exam-detail-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                    <path d="M9 9h6M9 13h6M9 17h4"/>
+                                </svg>
+                                <span>${exam.course_name} (${exam.course_code})</span>
+                            </div>
+                            <div class="exam-detail-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                                <span>Date: ${formatDate(exam.date)}</span>
+                            </div>
+                            <div class="exam-detail-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 6v6l4 2"/>
+                                </svg>
+                                <span>Start Time: ${formatTime(exam.start_time)}</span>
+                            </div>
+                            <div class="exam-detail-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 6v6l4 2"/>
+                                </svg>
+                                <span>End Time: ${formatTime(exam.end_time)}</span>
+                            </div>
+                            <div class="exam-detail-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 6v6l4 2"/>
+                                </svg>
+                                <span>Duration: ${exam.duration} minutes</span>
+                            </div>
+                        </div>
 
-                    <button class="exam-locked-btn" disabled>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                        Exam Locked
-                    </button>
-                </div>
-            `).join('');
+                        ${status === 'ended' ? `
+                            <div class="exam-end-notice">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 16v-4M12 8h.01"/>
+                                </svg>
+                                <span>Exam ended at ${formatTime(exam.end_time)}</span>
+                            </div>
+                        ` : ''}
+
+                        ${status === 'upcoming' ? `
+                            <div class="exam-end-notice" style="background: #dbeafe; border-color: #3b82f6;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 16v-4M12 8h.01"/>
+                                </svg>
+                                <span>Exam starts at ${formatTime(exam.start_time)}</span>
+                            </div>
+                        ` : ''}
+
+                        <button 
+                            class="${isAvailable ? 'exam-locked-btn' : 'exam-locked-btn'}" 
+                            onclick="handleExamAccess(${exam.id})"
+                            style="width: 100%; padding: 12px; background: ${isAvailable ? '#10b981' : '#e5e7eb'}; color: ${isAvailable ? 'white' : '#6b7280'}; border: none; border-radius: 6px; font-weight: 600; cursor: ${isAvailable ? 'pointer' : 'not-allowed'}; display: flex; align-items: center; justify-content: center; gap: 8px; opacity: ${isAvailable ? '1' : '0.6'};"
+                            ${!isAvailable ? 'disabled' : ''}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 ${isAvailable ? '9.9' : '10'}-${isAvailable ? '1' : '0'}v${isAvailable ? '' : '4'}"/>
+                            </svg>
+                            ${isAvailable ? 'Open Exam' : `Exam ${status === 'upcoming' ? 'Not Started' : 'Locked'}`}
+                        </button>
+                    </div>
+                `;
+            }).join('');
         }
 
-        // Initialize
-        renderExamCards();
+        document.getElementById('examSearchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            examsData = allExamsData.filter(exam => 
+                exam.title.toLowerCase().includes(searchTerm) ||
+                exam.exam_code.toLowerCase().includes(searchTerm) ||
+                exam.course_name.toLowerCase().includes(searchTerm) ||
+                exam.course_code.toLowerCase().includes(searchTerm)
+            );
+            renderExamCards();
+        });
+
+        setInterval(updateTime, 1000);
+        updateTime();
+        fetchExams();
+
+        setInterval(() => {
+            renderExamCards();
+        }, 60000);
     </script>
 </body>
 </html>

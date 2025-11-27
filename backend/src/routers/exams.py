@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from src.services.exams_service import ExamService
-from pydantic import BaseModel, field_validator,model_validator
+from pydantic import BaseModel, field_validator, model_validator
 from datetime import date, datetime, time
 
 router = APIRouter(prefix="/exams", tags=["Exams"])
@@ -9,31 +9,51 @@ service = ExamService()
 class ExamCreate(BaseModel):
     title: str
     exam_code: str
+    course: str
     date: str
     start_time: str
     end_time: str
     status: str = "scheduled"
+    
+    @field_validator('start_time', 'end_time', mode='before')
+    @classmethod
+    def validate_time_format(cls, v):
+        print(f"DEBUG: Received value: {v!r}, type: {type(v)}")  
+        """Validate time is in HH:MM format"""
+        if not v:
+            raise ValueError("Time is required")
+        
+        # Convert to string if needed
+        v = str(v).strip()
+        
+        try:
+            datetime.strptime(v, "%H:%M")
+        except ValueError:
+            raise ValueError(f"Time must be in HH:MM format, got '{v}'")
+        return v
 
-    @field_validator('date')
+    @field_validator('date', mode='before')
     @classmethod
     def validate_date(cls, v):
         date_obj = None
         formats = ["%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d", "%Y/%m/%d"]
         
-        # Try multiple date formats
-        for fmt in formats:
-            try:
-                date_obj = datetime.strptime(v, fmt).date()
-                break
-            except ValueError:
-                continue
+        # Handle if it's already a date object
+        if isinstance(v, date):
+            date_obj = v
+        else:
+            # Convert to string and try formats
+            v = str(v).strip()
+            for fmt in formats:
+                try:
+                    date_obj = datetime.strptime(v, fmt).date()
+                    break
+                except ValueError:
+                    continue
         
-        # If no format matched, raise error
         if date_obj is None:
             raise ValueError("Date must be in DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, or YYYY/MM/DD format")
         
-        
-        # Check if date is in the past
         if date_obj < date.today():
             raise ValueError("Exam date cannot be in the past")
         
@@ -41,33 +61,20 @@ class ExamCreate(BaseModel):
         if date_obj.year not in (current_year, current_year + 1):
             raise ValueError(f"Exam year must be {current_year} or {current_year + 1}")
         
-        # Return the standardized date string (YYYY-MM-DD) for storage
         return date_obj.strftime("%Y-%m-%d")
-
-    @field_validator('start_time', 'end_time')
-    @classmethod
-    def validate_time(cls, v):
-        try:
-            datetime.strptime(v, "%H:%M")
-        except ValueError:
-            raise ValueError("Time must be in HH:MM format")
-        return v
     
-    @model_validator(mode='before')
-    def check_datetime_order_and_past(cls, values):
-        date_str = values.get('date')
-        start_str = values.get('start_time')
-        end_str = values.get('end_time')
+    @model_validator(mode='after')
+    def check_datetime_order_and_past(self):
+        """Validate time order and that exam is not in the past"""
+        date_str = self.date
+        start_str = self.start_time
+        end_str = self.end_time
 
-        if not date_str or not start_str or not end_str:
-            return values  # skip if any missing; field validators handle missing values
-
-        # Parse date back to date object
-        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-
-        # Combine date with start_time and end_time to get full datetime objects
-        start_dt = datetime.strptime(f"{date_str} {start_str}", "%Y-%m-%d %H:%M")
-        end_dt = datetime.strptime(f"{date_str} {end_str}", "%Y-%m-%d %H:%M")
+        try:
+            start_dt = datetime.strptime(f"{date_str} {start_str}", "%Y-%m-%d %H:%M")
+            end_dt = datetime.strptime(f"{date_str} {end_str}", "%Y-%m-%d %H:%M")
+        except ValueError as e:
+            raise ValueError(f"Error parsing datetime: {str(e)}")
 
         now = datetime.now()
 
@@ -77,7 +84,20 @@ class ExamCreate(BaseModel):
         if start_dt < now:
             raise ValueError("Exam start time cannot be in the past")
 
-        return values
+        return self
+
+def convert_time_to_string(exam_dict):
+    """Helper function to convert time objects to strings"""
+    if not exam_dict:
+        return exam_dict
+    
+    if 'start_time' in exam_dict and exam_dict['start_time'] and not isinstance(exam_dict['start_time'], str):
+        exam_dict['start_time'] = exam_dict['start_time'].strftime('%H:%M')
+    
+    if 'end_time' in exam_dict and exam_dict['end_time'] and not isinstance(exam_dict['end_time'], str):
+        exam_dict['end_time'] = exam_dict['end_time'].strftime('%H:%M')
+    
+    return exam_dict
 
 
 @router.post("", status_code=201)
@@ -86,12 +106,13 @@ def add_exam(exam: ExamCreate):
         result = service.add_exam(
             title=exam.title,
             exam_code=exam.exam_code,
+            course=exam.course,
             date=exam.date,
             start_time=exam.start_time,
             end_time=exam.end_time,
             status=exam.status
         )
-        return result
+        return convert_time_to_string(result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -103,6 +124,7 @@ def update_exam(exam_id: int, exam: ExamCreate):
             exam_id=exam_id,
             title=exam.title,
             exam_code=exam.exam_code,
+            course=exam.course,
             date=exam.date,
             start_time=exam.start_time,
             end_time=exam.end_time,
@@ -110,16 +132,17 @@ def update_exam(exam_id: int, exam: ExamCreate):
         )
         if not result:
             raise HTTPException(status_code=404, detail="Exam not found")
-        return result
+        return convert_time_to_string(result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.get("/{exam_id}")
 def get_exam(exam_id: int):
     exam = service.get_exam(exam_id)
     if not exam:
         raise HTTPException(404, "Exam not found")
-    return exam
+    return convert_time_to_string(exam)
 
 
 @router.get("")
@@ -128,6 +151,26 @@ def get_all_exams():
     if not exams:
         return []
     return exams
+
+
+@router.get("/student/{student_id}")
+def get_student_exams(student_id: int):
+    """
+    Get all exams for a specific student based on their enrolled courses.
+    
+    Parameters:
+    - student_id: The ID of the student
+    
+    Returns:
+    - List of exams for courses the student is enrolled in
+    """
+    try:
+        exams = service.get_student_exams(student_id)
+        if not exams:
+            return []
+        return exams
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/{exam_id}")
