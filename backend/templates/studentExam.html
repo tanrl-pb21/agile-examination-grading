@@ -155,7 +155,7 @@
             if (!exam) return;
 
             if (isExamAvailable(exam)) {
-                window.location.href = `/exam/${exam.id}`;
+                window.location.href = `/studentTakingExam?exam_code=${exam.exam_code}`;
             } else {
                 const now = new Date();
                 const startDateTime = new Date(`${exam.date} ${exam.start_time}`);

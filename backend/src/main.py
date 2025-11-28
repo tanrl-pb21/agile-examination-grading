@@ -28,6 +28,8 @@ app.mount(
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 
+
+
 # Home page → return HTML instead of JSON
 @app.get("/examManagement", response_class=HTMLResponse)
 def home(request: Request):
