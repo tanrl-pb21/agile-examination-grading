@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,7 +24,7 @@
                 </div>
                 <button class="btn-submit-exam" id="submitBtnHeader" onclick="handleSubmitClick()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="20 6 9 17 4 12"/>
+                        <polyline points="20 6 9 17 4 12" />
                     </svg>
                     Submit Exam
                 </button>
@@ -39,7 +40,7 @@
         <div class="exam-submit-footer">
             <button class="btn-submit-exam-large" id="submitBtnFooter" onclick="handleSubmitClick()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="20 6 9 17 4 12"/>
+                    <polyline points="20 6 9 17 4 12" />
                 </svg>
                 Submit Exam
             </button>
@@ -47,12 +48,15 @@
     </div>
 
     <!-- Time's Up Modal -->
-    <div id="timeUpModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;">
+    <div id="timeUpModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;">
         <div style="background: white; padding: 40px; border-radius: 10px; max-width: 500px; text-align: center;">
             <h2 style="color: #dc3545; margin-bottom: 20px;">⏰ Time's Up!</h2>
-            <p style="font-size: 18px; margin-bottom: 30px;">The exam time has ended. Submissions are no longer accepted.</p>
+            <p style="font-size: 18px; margin-bottom: 30px;">The exam time has ended. Submissions are no longer
+                accepted.</p>
             <p style="color: #666; font-size: 14px;">Please contact your instructor if you have any concerns.</p>
-            <button onclick="window.location.href='exam-list.html'" style="margin-top: 20px; padding: 10px 30px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+            <button onclick="window.location.href='exam-list.html'"
+                style="margin-top: 20px; padding: 10px 30px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
                 Return to Exam List
             </button>
         </div>
@@ -73,15 +77,37 @@
         // ===========================
         // INITIALIZATION
         // ===========================
-        function initializeExam() {
+        async function checkIfStudentAlreadySubmitted(examCode, userId) {
+            try {
+                const res = await axios.get(`/exams/check-submission/${examCode}/${userId}`);
+
+                if (res.data.submitted) {
+                    alert("You have already submitted this exam. You cannot retake it.");
+                    window.location.href = "/studentExam";
+                    return false;
+                }
+
+                return true;
+
+            } catch (err) {
+                console.error(err);
+                alert("Something went wrong checking exam status.");
+                return false;
+            }
+        }
+        async function initializeExam() {
             const params = new URLSearchParams(window.location.search);
             currentExamCode = params.get("exam_code");
-            
+
             if (!currentExamCode) {
                 alert("No exam code provided!");
                 return;
             }
-            
+
+            const allowed = await checkIfStudentAlreadySubmitted(currentExamCode, currentUserId);
+            if (!allowed) return; // STOP loading the page
+
+            // Continue normally
             loadExamQuestions(currentExamCode);
             loadExamDuration(currentExamCode);
         }
@@ -93,11 +119,11 @@
             try {
                 const res = await axios.get(`/exams/code/${examCode}/questions`);
                 const rawQuestions = res.data.questions;
-                
+
                 examQuestionsData = transformQuestionsData(rawQuestions);
                 renderAllQuestions();
                 updateProgressDisplay();
-                
+
             } catch (err) {
                 console.error("Error loading exam questions:", err);
                 alert("Unable to load exam questions");
@@ -107,8 +133,8 @@
         function transformQuestionsData(rawQuestions) {
             return rawQuestions.map((q, index) => ({
                 id: q.id,
-                type: q.question_type.toLowerCase() === "mcq" 
-                    ? "Multiple Choice" 
+                type: q.question_type.toLowerCase() === "mcq"
+                    ? "Multiple Choice"
                     : "Essay Question",
                 marks: q.marks,
                 questionNumber: index + 1,
@@ -131,8 +157,8 @@
         function renderAllQuestions() {
             const container = document.getElementById('questionsContainer');
             container.innerHTML = examQuestionsData.map(q => {
-                return q.type === 'Multiple Choice' 
-                    ? renderMCQQuestion(q) 
+                return q.type === 'Multiple Choice'
+                    ? renderMCQQuestion(q)
                     : renderEssayQuestion(q);
             }).join("");
         }
@@ -261,16 +287,16 @@
                 alert("Submission in progress. Please wait...");
                 return;
             }
-            
+
             const unanswered = getUnansweredCount();
-            
+
             if (unanswered > 0) {
                 const confirmMsg = `You have ${unanswered} unanswered question(s). Do you still want to submit?`;
                 if (!confirm(confirmMsg)) {
                     return;
                 }
             }
-            
+
             if (confirm("Are you sure you want to submit your exam?")) {
                 submitExamToBackend();
             }
@@ -283,17 +309,17 @@
             try {
                 // Prepare submission data
                 const submissionData = prepareSubmissionData();
-                
+
                 // Send to backend
                 const response = await axios.post('/exams/submit', submissionData);
-                
+
                 // Handle response
                 handleSubmissionResponse(response.data);
-                
+
             } catch (error) {
                 console.error("Submission error:", error);
                 handleSubmissionError(error);
-                
+
                 // Re-enable buttons if submission failed (unless time is up)
                 if (!examHasEnded) {
                     isSubmitting = false;
@@ -307,7 +333,7 @@
                 question_id: parseInt(questionId),
                 answer: answer
             }));
-            
+
             return {
                 exam_code: currentExamCode,
                 user_id: currentUserId,
@@ -317,15 +343,15 @@
 
         function handleSubmissionResponse(data) {
             clearInterval(timerInterval);
-            
+
             let message = data.message;
             message += `\n\nScore: ${data.total_score}/${data.max_score}`;
             if (data.grade !== "Pending") {
                 message += `\nGrade: ${data.grade}`;
             }
-            
+
             alert(message);
-            
+
             // Redirect to exam list or results page
             window.location.href = "exam-list.html";
         }
@@ -348,7 +374,7 @@
                 const res = await axios.get(`/exams/code/${examCode}/duration`);
                 const data = res.data;
                 startExamTimer(data.remaining_seconds);
-                
+
             } catch (error) {
                 console.error("Error loading exam duration:", error);
                 alert("Failed to load exam timer.");
@@ -357,7 +383,7 @@
 
         function startExamTimer(remainingSeconds) {
             const timerDisplay = document.getElementById("examTimer");
-            
+
             // Change timer color when less than 5 minutes
             function updateTimerStyle(seconds) {
                 if (seconds <= 300 && seconds > 60) { // 5 minutes
@@ -367,15 +393,15 @@
                     timerDisplay.style.fontWeight = 'bold';
                 }
             }
-            
+
             timerInterval = setInterval(() => {
                 const timeStr = formatTime(remainingSeconds);
                 timerDisplay.textContent = `Time Left: ${timeStr}`;
-                
+
                 updateTimerStyle(remainingSeconds);
-                
+
                 remainingSeconds--;
-                
+
                 if (remainingSeconds <= 0) {
                     clearInterval(timerInterval);
                     handleTimeUp(); // Handle time up scenario
@@ -387,8 +413,8 @@
             const hrs = Math.floor(seconds / 3600);
             const mins = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
-            
-            return `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+
+            return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
         // ===========================
@@ -396,13 +422,13 @@
         // ===========================
         function handleTimeUp() {
             examHasEnded = true;
-            
+
             // Disable all inputs
             disableAllInputs();
-            
+
             // Disable submit buttons
             disableSubmitButtons();
-            
+
             // Show time's up modal
             showTimeUpModal();
         }
@@ -412,7 +438,7 @@
             document.querySelectorAll('input[type="radio"]').forEach(input => {
                 input.disabled = true;
             });
-            
+
             // Disable all textareas
             document.querySelectorAll('textarea').forEach(textarea => {
                 textarea.disabled = true;
@@ -423,13 +449,13 @@
         function disableSubmitButtons() {
             const headerBtn = document.getElementById('submitBtnHeader');
             const footerBtn = document.getElementById('submitBtnFooter');
-            
+
             if (headerBtn) {
                 headerBtn.disabled = true;
                 headerBtn.style.opacity = '0.5';
                 headerBtn.style.cursor = 'not-allowed';
             }
-            
+
             if (footerBtn) {
                 footerBtn.disabled = true;
                 footerBtn.style.opacity = '0.5';
@@ -440,13 +466,13 @@
         function enableSubmitButtons() {
             const headerBtn = document.getElementById('submitBtnHeader');
             const footerBtn = document.getElementById('submitBtnFooter');
-            
+
             if (headerBtn) {
                 headerBtn.disabled = false;
                 headerBtn.style.opacity = '1';
                 headerBtn.style.cursor = 'pointer';
             }
-            
+
             if (footerBtn) {
                 footerBtn.disabled = false;
                 footerBtn.style.opacity = '1';
@@ -463,7 +489,8 @@
         // PAGE LOAD
         // ===========================
         initializeExam();
-        
+
     </script>
 </body>
+
 </html>
