@@ -184,6 +184,7 @@
         let courses = [];
 
         // Configure axios with proper timeout and error handling
+        // axios.defaults.baseURL = 'http://localhost:8000';
         axios.defaults.timeout = 10000;
 
         // Load both exams and courses on page load
@@ -195,9 +196,8 @@
             try {
                 console.log('Fetching courses from /courses...');
                 
-                // Reduce timeout to 5 seconds for courses
                 const res = await axios.get('/courses', {
-                    timeout: 5000,  // 5 seconds instead of 30
+                    timeout: 10000,  // 5 seconds instead of 30
                     headers: {
                         'Accept': 'application/json'
                     }

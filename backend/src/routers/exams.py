@@ -100,6 +100,61 @@ def convert_time_to_string(exam_dict):
     return exam_dict
 
 
+# IMPORTANT: GET routes should come BEFORE parameterized routes to avoid conflicts
+@router.get("")
+def get_all_exams():
+    """Get all exams - this must be defined before /{exam_id} route"""
+    try:
+        print("📋 GET /exams - Fetching all exams...")
+        exams = service.get_all_exams()
+        
+        if not exams:
+            print("✅ No exams found, returning empty list")
+            return []
+        
+        # Convert time objects to strings for all exams
+        converted_exams = [convert_time_to_string(exam) for exam in exams]
+        print(f"✅ Returning {len(converted_exams)} exams")
+        return converted_exams
+        
+    except Exception as e:
+        print(f"❌ ERROR in get_all_exams: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.get("/student/{student_id}")
+def get_student_exams(student_id: int):
+    """
+    Get all exams for a specific student based on their enrolled courses.
+    Must be defined before the generic /{exam_id} route.
+    """
+    try:
+        exams = service.get_student_exams(student_id)
+        if not exams:
+            return []
+        return [convert_time_to_string(exam) for exam in exams]
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{exam_id}")
+def get_exam(exam_id: int):
+    """Get a single exam by ID"""
+    try:
+        print(f"📋 GET /exams/{exam_id} - Fetching single exam...")
+        exam = service.get_exam(exam_id)
+        if not exam:
+            raise HTTPException(404, "Exam not found")
+        return convert_time_to_string(exam)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ ERROR in get_exam: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("", status_code=201)
 def add_exam(exam: ExamCreate):
     try:
@@ -133,42 +188,6 @@ def update_exam(exam_id: int, exam: ExamCreate):
         if not result:
             raise HTTPException(status_code=404, detail="Exam not found")
         return convert_time_to_string(result)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.get("/{exam_id}")
-def get_exam(exam_id: int):
-    exam = service.get_exam(exam_id)
-    if not exam:
-        raise HTTPException(404, "Exam not found")
-    return convert_time_to_string(exam)
-
-
-@router.get("")
-def get_all_exams():
-    exams = service.get_all_exams()
-    if not exams:
-        return []
-    return exams
-
-
-@router.get("/student/{student_id}")
-def get_student_exams(student_id: int):
-    """
-    Get all exams for a specific student based on their enrolled courses.
-    
-    Parameters:
-    - student_id: The ID of the student
-    
-    Returns:
-    - List of exams for courses the student is enrolled in
-    """
-    try:
-        exams = service.get_student_exams(student_id)
-        if not exams:
-            return []
-        return exams
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

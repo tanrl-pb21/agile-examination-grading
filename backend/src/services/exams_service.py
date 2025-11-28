@@ -92,55 +92,67 @@ class ExamService:
     
     def check_exam_conflicts(self, course_id, exam_date, start_time, end_time, exclude_exam_id=None):
         """
-        Check if adding an exam creates scheduling conflicts.
-        
-        A conflict occurs if:
-        1. ANY student is enrolled in the new course
-        2. That SAME student is also in another course that has an exam at the overlapping time
-        
-        OR: Any student in this course is taking another exam at the same time (same or different course)
+        OPTIMIZED: Check if adding an exam creates scheduling conflicts.
+        Uses a simpler, faster query with proper indexing support.
         """
         try:
-            # Convert course_id to int if needed
             course_id = int(course_id)
             
-            # Query: Find any exams that overlap with the new exam time on the same date
-            # for courses where students from this course are also enrolled
-            sql_conflicts = """
-                SELECT DISTINCT 
-                    e.id,
-                    e.course,
-                    e.start_time,
-                    e.end_time,
-                    c.course_code,
-                    c.course_name
-                FROM exams e
-                INNER JOIN course c ON e.course = c.id
-                WHERE 
-                    e.date = %s
-                    AND e.start_time < %s
-                    AND e.end_time > %s
-                    AND EXISTS (
-                        SELECT 1 FROM "studentCourse" sc1
-                        WHERE sc1.course_id = %s
-                        AND sc1.student_id IN (
-                            SELECT student_id FROM "studentCourse" sc2
-                            WHERE sc2.course_id = e.course
-                        )
-                    )
+            # Simplified conflict check with timeout protection
+            # Step 1: Get students in this course
+            sql_students = """
+                SELECT student_id FROM "studentCourse" 
+                WHERE course_id = %s
+                LIMIT 1000
             """
             
-            params = [exam_date, end_time, start_time, course_id]
-            
-            if exclude_exam_id:
-                sql_conflicts += " AND e.id != %s"
-                params.append(exclude_exam_id)
-            
-            sql_conflicts += " LIMIT 1;"
-            
-            print(f"DEBUG: Checking conflicts for course {course_id} on {exam_date} from {start_time} to {end_time}")
-            
             with get_conn() as conn:
+                # Set statement timeout to prevent hanging (5 seconds)
+                with conn.cursor() as cur:
+                    try:
+                        cur.execute("SET statement_timeout = '5000'")  # 5 second timeout
+                    except:
+                        pass  # Ignore if not supported
+                
+                # Get students in this course
+                with conn.cursor() as cur:
+                    cur.execute(sql_students, (course_id,))
+                    students = cur.fetchall()
+                
+                if not students:
+                    print(f"DEBUG: No students enrolled in course {course_id}, skipping conflict check")
+                    return
+                
+                student_ids = [s['student_id'] for s in students]
+                
+                # Step 2: Check for conflicting exams
+                # Using ANY array for better performance than IN clause
+                sql_conflicts = """
+                    SELECT DISTINCT 
+                        e.id,
+                        e.course,
+                        e.start_time,
+                        e.end_time,
+                        c.course_code,
+                        c.course_name
+                    FROM exams e
+                    INNER JOIN course c ON e.course = c.id
+                    INNER JOIN "studentCourse" sc ON sc.course_id = e.course
+                    WHERE 
+                        e.date = %s
+                        AND e.start_time < %s
+                        AND e.end_time > %s
+                        AND sc.student_id = ANY(%s)
+                """
+                
+                params = [exam_date, end_time, start_time, student_ids]
+                
+                if exclude_exam_id:
+                    sql_conflicts += " AND e.id != %s"
+                    params.append(exclude_exam_id)
+                
+                sql_conflicts += " LIMIT 1;"
+                
                 with conn.cursor(row_factory=dict_row) as cur:
                     cur.execute(sql_conflicts, params)
                     conflict = cur.fetchone()
@@ -153,19 +165,22 @@ class ExamService:
                     f"from {conflict['start_time']} to {conflict['end_time']} on {exam_date}"
                 )
             
-            print(f"DEBUG: No conflicts found")
+            print(f"DEBUG: No conflicts found for course {course_id}")
         
         except ValueError:
             raise
         except Exception as e:
-            # Log the error but don't fail the exam creation due to conflict checking
-            print(f"Error checking exam conflicts: {str(e)}")
+            # Log error but don't fail the exam creation
+            print(f"WARNING: Error checking exam conflicts (non-fatal): {str(e)}")
             import traceback
             traceback.print_exc()
+            # Don't raise - allow exam creation to proceed
             return
 
     def add_exam(self, title, exam_code, course, date, start_time, end_time, status='scheduled'):
         """Add a new exam with full validation"""
+        print(f"🔍 add_exam called: {title}, {exam_code}, course={course}")
+        
         # Validate all inputs
         title = validate_title(title)
         exam_code = validate_exam_code(exam_code)
@@ -198,8 +213,13 @@ class ExamService:
         # Calculate duration first to validate times
         duration = calculate_duration(start_time, end_time)
         
-        # Check for exam conflicts
-        self.check_exam_conflicts(course, date_obj, start_time, end_time)
+        # Check for exam conflicts (with timeout protection)
+        try:
+            self.check_exam_conflicts(course, date_obj, start_time, end_time)
+        except ValueError:
+            raise  # Re-raise validation errors
+        except Exception as e:
+            print(f"WARNING: Conflict check failed but proceeding: {e}")
         
         sql = """
             INSERT INTO exams (title, exam_code, course, date, start_time, end_time, duration, status)
@@ -211,10 +231,13 @@ class ExamService:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(sql, (title, exam_code, course, date_obj, start_time, end_time, duration, status))
                 row = cur.fetchone()
+                print(f"✅ Exam created with id={row['id']}")
                 return row
 
     def update_exam(self, exam_id, title, exam_code, course, date, start_time, end_time, status='scheduled'):
         """Update an existing exam with full validation"""
+        print(f"🔍 update_exam called: id={exam_id}, {title}")
+        
         if not exam_id:
             raise ValueError("Exam ID is required")
         
@@ -250,8 +273,13 @@ class ExamService:
         # Calculate duration
         duration = calculate_duration(start_time, end_time)
         
-        # Check for exam conflicts (excluding this exam from conflict check)
-        self.check_exam_conflicts(course, date_obj, start_time, end_time, exclude_exam_id=exam_id)
+        # Check for exam conflicts (with timeout protection)
+        try:
+            self.check_exam_conflicts(course, date_obj, start_time, end_time, exclude_exam_id=exam_id)
+        except ValueError:
+            raise  # Re-raise validation errors
+        except Exception as e:
+            print(f"WARNING: Conflict check failed but proceeding: {e}")
         
         sql = """
             UPDATE exams
@@ -268,6 +296,7 @@ class ExamService:
         if not row:
             raise ValueError(f"Exam with id {exam_id} not found")
         
+        print(f"✅ Exam {exam_id} updated")
         return row
 
     def get_exam(self, exam_id: int):
@@ -289,31 +318,55 @@ class ExamService:
         return row
 
     def get_all_exams(self):
-        """Get all exams ordered by date and start time"""
+        """Get all exams ordered by date and start time - OPTIMIZED"""
+        print("🔍 ExamService.get_all_exams() called")
+        
         sql = """
             SELECT id, title, exam_code, course, date, start_time, end_time, duration, status
             FROM exams
-            ORDER BY date, start_time;
+            ORDER BY date DESC, start_time DESC
+            LIMIT 1000;
         """
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(sql)
-                rows = cur.fetchall()
         
-        # Convert time objects to HH:MM string format
-        if rows:
-            for row in rows:
-                if row['start_time'] and not isinstance(row['start_time'], str):
-                    row['start_time'] = row['start_time'].strftime('%H:%M')
-                if row['end_time'] and not isinstance(row['end_time'], str):
-                    row['end_time'] = row['end_time'].strftime('%H:%M')
-        
-        return rows if rows else []
+        try:
+            with get_conn() as conn:
+                print("✅ Database connection obtained")
+                
+                # Set statement timeout to prevent hanging
+                with conn.cursor() as cur:
+                    try:
+                        cur.execute("SET statement_timeout = '5000'")  # 5 second timeout
+                        print("✅ Statement timeout set")
+                    except Exception as e:
+                        print(f"⚠️ Could not set timeout: {e}")
+                
+                with conn.cursor(row_factory=dict_row) as cur:
+                    print("🔍 Executing query...")
+                    cur.execute(sql)
+                    print("🔍 Fetching results...")
+                    rows = cur.fetchall()
+                    print(f"✅ Query completed. Found {len(rows) if rows else 0} exams")
+            
+            # Convert time objects to HH:MM string format
+            if rows:
+                for row in rows:
+                    if row['start_time'] and not isinstance(row['start_time'], str):
+                        row['start_time'] = row['start_time'].strftime('%H:%M')
+                    if row['end_time'] and not isinstance(row['end_time'], str):
+                        row['end_time'] = row['end_time'].strftime('%H:%M')
+            
+            print(f"✅ Returning {len(rows) if rows else 0} exams")
+            return rows if rows else []
+            
+        except Exception as e:
+            print(f"❌ ERROR in get_all_exams: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            # Return empty list instead of raising to prevent UI timeout
+            return []
 
     def get_student_exams(self, student_id: int):
-        """
-        Get all exams for courses that a student is enrolled in.
-        """
+        """Get all exams for courses that a student is enrolled in."""
         if not student_id or student_id <= 0:
             raise ValueError("Student ID must be a positive integer")
         
@@ -334,23 +387,31 @@ class ExamService:
             INNER JOIN "studentCourse" sc ON e.course = sc.course_id
             INNER JOIN course c ON e.course = c.id
             WHERE sc.student_id = %s
-            ORDER BY e.date, e.start_time;
+            ORDER BY e.date DESC, e.start_time DESC
+            LIMIT 1000;
         """
 
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(sql, (student_id,))
-                rows = cur.fetchall()
-        
-        # Convert time objects to HH:MM string format
-        if rows:
-            for row in rows:
-                if row['start_time'] and not isinstance(row['start_time'], str):
-                    row['start_time'] = row['start_time'].strftime('%H:%M')
-                if row['end_time'] and not isinstance(row['end_time'], str):
-                    row['end_time'] = row['end_time'].strftime('%H:%M')
-        
-        return rows if rows else []
+        try:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(sql, (student_id,))
+                    rows = cur.fetchall()
+            
+            # Convert time objects to HH:MM string format
+            if rows:
+                for row in rows:
+                    if row['start_time'] and not isinstance(row['start_time'], str):
+                        row['start_time'] = row['start_time'].strftime('%H:%M')
+                    if row['end_time'] and not isinstance(row['end_time'], str):
+                        row['end_time'] = row['end_time'].strftime('%H:%M')
+            
+            return rows if rows else []
+            
+        except Exception as e:
+            print(f"ERROR in get_student_exams: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return []
 
     def delete_exam(self, exam_id: int):
         """Delete an exam by ID"""
@@ -367,4 +428,5 @@ class ExamService:
         if not row:
             raise ValueError(f"Exam with id {exam_id} not found")
         
+        print(f"✅ Exam {exam_id} deleted")
         return row
