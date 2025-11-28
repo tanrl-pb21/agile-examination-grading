@@ -239,6 +239,14 @@ def check_submission(exam_code: str, user_id: int):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+@router.get("/check-availability/{exam_code}")
+def check_exam_availability(exam_code: str):
+    try:
+        service = ExamService()
+        result = service.check_exam_availability(exam_code)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 from typing import List, Dict, Any, Union
 from pydantic import BaseModel
@@ -282,4 +290,5 @@ def submit_exam(submission: ExamSubmission):
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
