@@ -8,12 +8,14 @@ from src.routers import exams
 from src.routers import course
 from src.routers import question
 from src.routers import submission
+from src.routers import grading
 
 app = FastAPI()
 app.include_router(exams.router)
 app.include_router(course.router)
 app.include_router(question.router)
 app.include_router(submission.router)
+app.include_router(grading.router)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -41,14 +43,14 @@ def exam_details(request: Request, id: int):
 
 # http://127.0.0.1:8000/examDetails?id=1
 @app.get("/examGrading", response_class=HTMLResponse)
-def exam_grading(request: Request, submissionId: str, examId: int):
+def exam_grading(request: Request, submissionId: int, examId: int):  # Changed to int
     return templates.TemplateResponse(
         "examGrading.html",
         {"request": request, "submissionId": submissionId, "examId": examId},
     )
 
 
-# http://127.0.0.1:8000/examGrading?submissionId=sub1001&examId=1
+# http://127.0.0.1:8000/examGrading?submissionId=4&examId=42
 
 
 # Student: exam list
@@ -58,9 +60,16 @@ def student_exam_list(request: Request):
 
 
 # Student: exam taking
+# @app.get("/studentTakingExam", response_class=HTMLResponse)
+# def student_taking_exam(request: Request):
+#     return templates.TemplateResponse(
+#         "studentTakingExam.html", {"request": request}
+#     )
 @app.get("/studentTakingExam", response_class=HTMLResponse)
-def student_taking_exam(request: Request):
-    return templates.TemplateResponse("studentTakingExam.html", {"request": request})
+def student_taking_exam(request: Request, exam_code: str):
+    return templates.TemplateResponse(
+        "studentTakingExam.html", {"request": request, "exam_code": exam_code}
+    )
 
 
 # Student: submission list

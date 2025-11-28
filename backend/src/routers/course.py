@@ -7,7 +7,9 @@ service = CourseService()
 
 @router.get("")
 def get_all_courses():
-    courses = service.get_all_courses()
-    if not courses:
-        return []
-    return courses
+    """Get all courses"""
+    try:
+        courses = service.get_all_courses()
+        return courses
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
