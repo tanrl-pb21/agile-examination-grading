@@ -145,3 +145,12 @@ def get_exam_duration_by_code(exam_code: str):
         return service.get_exam_duration_by_code(exam_code)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/code/{exam_code}/questions")
+def get_questions_by_exam_code(exam_code: str):
+    exam_code = exam_code.strip()   # prevent whitespace issues
+
+    try:
+        return service.get_questions_by_exam_code(exam_code)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

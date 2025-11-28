@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="../static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
+
 <body>
     <div class="exam-taking-container">
         <!-- Exam Header -->
@@ -18,7 +19,7 @@
             <div class="exam-header-right">
                 <div class="exam-timer" id="examTimer">Time Left: --:--:--</div>
                 <div class="exam-progress">
-                    <span id="examProgressText">1/3</span>
+                    <span id="examProgressText">0/0</span>
                 </div>
                 <button class="btn-submit-exam" onclick="submitExam()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -46,52 +47,60 @@
     </div>
 
     <script>
-        const examQuestionsData = [
-            {
-                id: 1,
-                type: 'Multiple Choice',
-                marks: 5,
-                questionNumber: 1,
-                totalQuestions: 3,
-                question: 'What is the capital of France?',
-                options: [
-                    { id: 'A', text: 'London' },
-                    { id: 'B', text: 'Paris' },
-                    { id: 'C', text: 'Berlin' },
-                    { id: 'D', text: 'Madrid' }
-                ]
-            },
-            {
-                id: 2,
-                type: 'Multiple Choice',
-                marks: 5,
-                questionNumber: 2,
-                totalQuestions: 3,
-                question: 'Which planet is known as the Red Planet?',
-                options: [
-                    { id: 'A', text: 'Venus' },
-                    { id: 'B', text: 'Mars' },
-                    { id: 'C', text: 'Jupiter' },
-                    { id: 'D', text: 'Saturn' }
-                ]
-            },
-            {
-                id: 3,
-                type: 'Essay Question',
-                marks: 20,
-                questionNumber: 3,
-                totalQuestions: 3,
-                question: 'Discuss the impact of climate change on global ecosystems and propose three practical solutions that governments can implement to mitigate its effects.',
-                note: 'Write a detailed answer. This will be manually graded by your instructor.'
-            }
-        ];
-
+        let examQuestionsData = [];
         let selectedAnswers = {};
-
-        // Render exam questions
+    
+        // -------------------------------
+        // LOAD QUESTIONS FROM BACKEND
+        // -------------------------------
+        async function loadExamQuestions(examCode) {
+            try {
+                const res = await axios.get(`/exams/code/${examCode}/questions`);
+                const raw = res.data.questions;
+    
+                examQuestionsData = raw.map((q, index) => ({
+                    id: q.id,
+    
+                    // Convert DB type → UI type
+                    type: q.question_type.toLowerCase() === "mcq"
+                        ? "Multiple Choice"
+                        : "Essay Question",
+    
+                    marks: q.marks,
+                    questionNumber: index + 1,
+                    totalQuestions: raw.length,
+                    question: q.question_text,
+    
+                    // Convert DB options → UI structure
+                    options: q.options.map((opt, idx) => ({
+                        id: opt.id,   // REAL DB ID (21,22,23,24...)
+                        label: String.fromCharCode(65 + idx), // A,B,C,D...
+                        text: opt.option_text
+                    })),
+    
+                    note: q.question_type.toLowerCase() === "essay"
+                        ? "Write a detailed answer. This will be manually graded by your instructor."
+                        : null
+                }));
+    
+                renderExamQuestions();
+                updateProgress();
+    
+            } catch (err) {
+                console.error("Error loading exam questions:", err);
+                alert("Unable to load exam questions");
+            }
+        }
+    
+        // -------------------------------
+        // RENDER QUESTIONS (UI)
+        // -------------------------------
         function renderExamQuestions() {
             const container = document.getElementById('questionsContainer');
+    
             container.innerHTML = examQuestionsData.map(q => {
+    
+                // === Multiple Choice ===
                 if (q.type === 'Multiple Choice') {
                     return `
                         <div class="question-card-student">
@@ -103,140 +112,154 @@
                                 <span class="question-marks">${q.marks} marks</span>
                                 <span class="question-counter">Question ${q.questionNumber} of ${q.totalQuestions}</span>
                             </div>
+    
                             <div class="question-content-student">
                                 <h3 class="question-text-student">${q.question}</h3>
+    
                                 <div class="options-list-student">
                                     ${q.options.map(opt => `
-                                        <label class="option-student ${selectedAnswers[q.id] === opt.id ? 'selected' : ''}">
-                                            <input type="radio" name="question${q.id}" value="${opt.id}" onchange="selectAnswer(${q.id}, '${opt.id}')">
+                                        <label class="option-student ${selectedAnswers[q.id] == opt.id ? 'selected' : ''}">
+                                            <input
+                                                type="radio"
+                                                name="question${q.id}"
+                                                value="${opt.id}"
+                                                onchange="selectAnswer(${q.id}, ${opt.id})"
+                                                ${selectedAnswers[q.id] == opt.id ? 'checked' : ''}
+                                            >
                                             <span class="option-radio-custom"></span>
-                                            <span class="option-label">${opt.id}.</span>
+                                            <span class="option-label">${opt.label}.</span>
                                             <span class="option-text">${opt.text}</span>
                                         </label>
-                                    `).join('')}
+                                    `).join("")}
                                 </div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    return `
-                        <div class="question-card-student">
-                            <div class="question-header-student">
-                                <div class="question-type-badge essay-badge">
-                                    <span class="question-number-circle">${q.questionNumber}</span>
-                                    <span>${q.type}</span>
-                                </div>
-                                <span class="question-marks">${q.marks} marks</span>
-                                <span class="question-counter">Question ${q.questionNumber} of ${q.totalQuestions}</span>
-                            </div>
-                            <div class="question-content-student">
-                                <h3 class="question-text-student">${q.question}</h3>
-                                <textarea class="essay-textarea" placeholder="Type your answer here..." rows="10"></textarea>
-                                <p class="essay-note">${q.note}</p>
                             </div>
                         </div>
                     `;
                 }
-            }).join('');
-
-            updateProgress();
+    
+                // === Essay ===
+                return `
+                    <div class="question-card-student">
+                        <div class="question-header-student">
+                            <div class="question-type-badge essay-badge">
+                                <span class="question-number-circle">${q.questionNumber}</span>
+                                <span>${q.type}</span>
+                            </div>
+                            <span class="question-marks">${q.marks} marks</span>
+                            <span class="question-counter">Question ${q.questionNumber} of ${q.totalQuestions}</span>
+                        </div>
+    
+                        <div class="question-content-student">
+                            <h3 class="question-text-student">${q.question}</h3>
+                            <textarea 
+                                class="essay-textarea" 
+                                rows="10"
+                                placeholder="Type your answer here..."
+                                oninput="updateEssayAnswer(${q.id}, this.value)"
+                            >${selectedAnswers[q.id] || ''}</textarea>
+                            <p class="essay-note">${q.note}</p>
+                        </div>
+                    </div>
+                `;
+            }).join("");
         }
-
-        // Select answer for MCQ
+    
+        // -------------------------------
+        // SAVE MCQ SELECTION
+        // -------------------------------
         function selectAnswer(questionId, optionId) {
             selectedAnswers[questionId] = optionId;
-            renderExamQuestions();
+            updateProgress();
+            renderExamQuestions(); // refresh highlight + checked state
         }
 
-        // Update progress
+        // -------------------------------
+        // SAVE ESSAY ANSWER
+        // -------------------------------
+        function updateEssayAnswer(questionId, value) {
+            if (value.trim()) {
+                selectedAnswers[questionId] = value;
+            } else {
+                delete selectedAnswers[questionId];
+            }
+            updateProgress();
+        }
+    
+        // -------------------------------
+        // PROGRESS COUNTER (FIXED)
+        // -------------------------------
         function updateProgress() {
             const answered = Object.keys(selectedAnswers).length;
-            const total = examQuestionsData.filter(q => q.type === 'Multiple Choice').length;
+            const total = examQuestionsData.length; // ✅ Count ALL questions (MCQ + Essay)
             document.getElementById('examProgressText').textContent = `${answered}/${total}`;
         }
-
-        // Submit exam
+    
+        // -------------------------------
+        // SUBMIT
+        // -------------------------------
         function submitExam() {
-            if (confirm('Are you sure you want to submit your exam? You cannot change your answers after submission.')) {
-                alert('Exam submitted successfully!');
-                // Redirect to exam list or results page
-                window.location.href = 'exam-list.html';
+            const total = examQuestionsData.length;
+            const answered = Object.keys(selectedAnswers).length;
+            
+            if (answered < total) {
+                if (!confirm(`You have only answered ${answered} out of ${total} questions. Do you still want to submit?`)) {
+                    return;
+                }
+            }
+            
+            if (confirm("Are you sure you want to submit your exam?")) {
+                alert("Exam submitted successfully!");
+                window.location.href = "exam-list.html";
             }
         }
-
-        // // Set exam duration (example: 1 hour)
-        // let examDurationMinutes = 60;
-
-        // // Convert to seconds
-        // let remainingSeconds = examDurationMinutes * 60;
-
-        // function startCountdown() {
-        //     const timerDisplay = document.getElementById("examTimer");
-
-        //     const timer = setInterval(() => {
-        //         let hrs = Math.floor(remainingSeconds / 3600);
-        //         let mins = Math.floor((remainingSeconds % 3600) / 60);
-        //         let secs = remainingSeconds % 60;
-
-        //         timerDisplay.textContent = `Time Left: ${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
-
-        //         remainingSeconds--;
-
-        //         // Auto-submit when time runs out
-        //         if (remainingSeconds < 0) {
-        //             clearInterval(timer);
-        //             alert("Time is up! Your exam will be submitted automatically.");
-        //             submitExam();
-        //         }
-
-        //     }, 1000);
-        // }
-
-        // // Start countdown after page loads
-        // startCountdown();
-
-        // // Initialize
-        // renderExamQuestions();
-
+    
+        // -------------------------------
+        // TIMER (UNCHANGED)
+        // -------------------------------
         async function loadExamDuration(examCode) {
-    try {
-        const res = await axios.get(`/exams/code/${examCode}/duration`);
-        const data = res.data;
-
-        let remainingSeconds = data.remaining_seconds;
-        const timerDisplay = document.getElementById("examTimer");
-
-        const timer = setInterval(() => {
-            let hrs = Math.floor(remainingSeconds / 3600);
-            let mins = Math.floor((remainingSeconds % 3600) / 60);
-            let secs = remainingSeconds % 60;
-
-            timerDisplay.textContent =
-                `Time Left: ${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-
-            remainingSeconds--;
-
-            if (remainingSeconds <= 0) {
-                clearInterval(timer);
-                alert("Time is up! Submitting exam...");
-                submitExam();
+            try {
+                const res = await axios.get(`/exams/code/${examCode}/duration`);
+                const data = res.data;
+    
+                let remainingSeconds = data.remaining_seconds;
+                const timerDisplay = document.getElementById("examTimer");
+    
+                const timer = setInterval(() => {
+                    let hrs = Math.floor(remainingSeconds / 3600);
+                    let mins = Math.floor((remainingSeconds % 3600) / 60);
+                    let secs = remainingSeconds % 60;
+    
+                    timerDisplay.textContent =
+                        `Time Left: ${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+    
+                    remainingSeconds--;
+    
+                    if (remainingSeconds <= 0) {
+                        clearInterval(timer);
+                        alert("Time is up! Submitting exam...");
+                        submitExam();
+                    }
+                }, 1000);
+    
+            } catch (error) {
+                console.error("Error loading exam duration:", error);
+                alert("Failed to load exam timer.");
             }
-        }, 1000);
-    } catch (error) {
-        console.error("Error loading exam duration:", error);
-        alert("Failed to load exam timer.");
-    }
-}
-
-// Get exam_code from URL like ?exam_code=3131
-const params = new URLSearchParams(window.location.search);
-const examCode = params.get("exam_code");
-
-// Start exam questions + countdown
-renderExamQuestions();
-loadExamDuration(examCode);
-
-
+        }
+    
+        // -------------------------------
+        // ON PAGE LOAD
+        // -------------------------------
+        const params = new URLSearchParams(window.location.search);
+        const examCode = params.get("exam_code");
+    
+        if (examCode) {
+            loadExamQuestions(examCode);
+            loadExamDuration(examCode);
+        } else {
+            alert("No exam code provided!");
+        }
     </script>
+    
 </body>
 </html>

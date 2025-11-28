@@ -193,3 +193,47 @@ class ExamService:
             "start_time": start_time.isoformat(),
             "end_time": end_time.isoformat(),
         }
+
+    def get_questions_by_exam_code(self, exam_code: str):
+
+        sql_exam = """
+            SELECT id 
+            FROM exams 
+            WHERE exam_code = %s
+        """
+
+        sql_questions = """
+            SELECT id, question_text, question_type, marks
+            FROM question
+            WHERE exam_id = %s
+            ORDER BY id
+        """
+
+        sql_options = """
+            SELECT id, option_text
+            FROM "questionOption"
+            WHERE question_id = %s
+            ORDER BY id
+        """
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+
+                # Get exam ID
+                cur.execute(sql_exam, (exam_code,))
+                exam = cur.fetchone()
+                if not exam:
+                    raise ValueError("Exam not found")
+
+                exam_id = exam["id"]
+
+                # Get all questions
+                cur.execute(sql_questions, (exam_id,))
+                questions = cur.fetchall()
+
+                # Get options for each question
+                for q in questions:
+                    cur.execute(sql_options, (q["id"],))
+                    q["options"] = cur.fetchall()
+
+        return {"questions": questions}
