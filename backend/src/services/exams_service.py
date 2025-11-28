@@ -538,83 +538,110 @@ class ExamService:
             "start_time": start_time.isoformat(),
             "end_time": end_time.isoformat(),
         }
+        
+    def check_exam_availability(self, exam_code: str):
+        from datetime import datetime, timedelta, timezone
+        MALAYSIA_TZ = timezone(timedelta(hours=8))
 
-    ##ep test
-    # def get_exam_duration_by_code(self, exam_code: str) -> dict:
-    #     from datetime import datetime, timedelta, timezone
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                sql = """
+                    SELECT date, start_time, end_time
+                    FROM exams
+                    WHERE exam_code = %s
+                """
+                cur.execute(sql, (exam_code,))
+                exam = cur.fetchone()
 
-    #     MALAYSIA_TZ = timezone(timedelta(hours=8))
+                if not exam:
+                    raise ValueError("Exam not found")
 
-    #     sql = """
-    #         SELECT date, start_time, end_time, duration
-    #         FROM exams
-    #         WHERE exam_code = %s
-    #     """
+                exam_date = exam["date"]
+                start_time = exam["start_time"]
+                end_time = exam["end_time"]
 
-    #     with get_conn() as conn:
-    #         with conn.cursor(row_factory=dict_row) as cur:
-    #             cur.execute(sql, (exam_code,))
-    #             row = cur.fetchone()
+                start_dt = datetime.combine(exam_date, start_time, MALAYSIA_TZ)
+                end_dt = datetime.combine(exam_date, end_time, MALAYSIA_TZ)
+                now = datetime.now(MALAYSIA_TZ)
 
-    #     if not row:
-    #         raise ValueError("Exam not found")
+                if now < start_dt:
+                    return {
+                        "status": "not_started",
+                        "message": f"Exam starts at {start_time.strftime('%H:%M')} on {exam_date}."
+                    }
 
-    #     # 1. Extract raw values
-    #     exam_date = row["date"]
-    #     start_time = row["start_time"]
-    #     end_time = row["end_time"]
-    #     duration_minutes = row["duration"]
+                if now > end_dt:
+                    return {
+                        "status": "ended",
+                        "message": f"Exam ended at {end_time.strftime('%H:%M')} on {exam_date}."
+                    }
 
-    #     # 2. Convert to Python date/time if needed
-    #     if isinstance(exam_date, str):
-    #         exam_date = datetime.strptime(exam_date, "%Y-%m-%d").date()
+                return {
+                    "status": "available",
+                    "message": "Exam is open."
+                }
 
-    #     if isinstance(start_time, str):
-    #         start_time = datetime.strptime(start_time, "%H:%M:%S").time()
-    #     elif isinstance(start_time, timedelta):
-    #         # PostgreSQL sometimes returns time as timedelta
-    #         total_seconds = int(start_time.total_seconds())
-    #         hours = total_seconds // 3600
-    #         minutes = (total_seconds % 3600) // 60
-    #         seconds = total_seconds % 60
-    #         start_time = time(hours, minutes, seconds)
+    def check_if_student_submitted(self, exam_code: str, user_id: int) -> bool:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
 
-    #     if isinstance(end_time, str):
-    #         end_time = datetime.strptime(end_time, "%H:%M:%S").time()
-    #     elif isinstance(end_time, timedelta):
-    #         # PostgreSQL sometimes returns time as timedelta
-    #         total_seconds = int(end_time.total_seconds())
-    #         hours = total_seconds // 3600
-    #         minutes = (total_seconds % 3600) // 60
-    #         seconds = total_seconds % 60
-    #         end_time = time(hours, minutes, seconds)
+                # Get exam ID first
+                exam_id = self._get_exam_id_by_code(cur, exam_code)
 
-    #     # 3. Combine into Malaysia timezone datetime
-    #     start_dt = datetime.combine(exam_date, start_time, MALAYSIA_TZ)
-    #     end_dt = datetime.combine(exam_date, end_time, MALAYSIA_TZ)
-    #     now = datetime.now(MALAYSIA_TZ)
+                # Check if submission exists
+                sql = """
+                    SELECT id
+                    FROM submission
+                    WHERE exam_code = %s AND user_id = %s
+                    LIMIT 1
+                """
+                cur.execute(sql, (exam_id, user_id))
+                exists = cur.fetchone()
 
-    #     # 4. Calculate duration
-    #     duration_seconds = int((end_dt - start_dt).total_seconds())
+                return exists is not None
+    def get_questions_by_exam_code(self, exam_code: str):
 
-    #     # 5. Calculate remaining time
-    #     # If exam hasn't started yet, show full duration
-    #     if now < start_dt:
-    #         remaining_seconds = duration_seconds
-    #     # If exam has started, show time until end
-    #     elif now < end_dt:
-    #         remaining_seconds = max(int((end_dt - now).total_seconds()), 0)
-    #     # If exam has ended, show 0
-    #     else:
-    #         remaining_seconds = 0
+        sql_exam = """
+            SELECT id 
+            FROM exams 
+            WHERE exam_code = %s
+        """
 
-    #     return {
-    #         "duration_seconds": duration_seconds,
-    #         "remaining_seconds": remaining_seconds,
-    #         "date": exam_date.isoformat(),
-    #         "start_time": start_time.isoformat(),
-    #         "end_time": end_time.isoformat(),
-    #     }
+        sql_questions = """
+            SELECT id, question_text, question_type, marks
+            FROM question
+            WHERE exam_id = %s
+            ORDER BY id
+        """
+
+        sql_options = """
+            SELECT id, option_text
+            FROM "questionOption"
+            WHERE question_id = %s
+            ORDER BY id
+        """
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+
+                # Get exam ID
+                cur.execute(sql_exam, (exam_code,))
+                exam = cur.fetchone()
+                if not exam:
+                    raise ValueError("Exam not found")
+
+                exam_id = exam["id"]
+
+                # Get all questions
+                cur.execute(sql_questions, (exam_id,))
+                questions = cur.fetchall()
+
+                # Get options for each question
+                for q in questions:
+                    cur.execute(sql_options, (q["id"],))
+                    q["options"] = cur.fetchall()
+
+        return {"questions": questions}
 
     def get_questions_by_exam_code(self, exam_code: str):
 

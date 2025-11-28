@@ -7,6 +7,40 @@
     <link rel="stylesheet" href="../static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/axios@latest/dist/axios.min.js"></script>
 </head>
+<style>
+    .submission-card {
+    padding: 16px 20px;
+    border-radius: 14px;
+    min-height: 220px; 
+
+}
+
+.submission-score-section {
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.submission-score-large {
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.submission-score-label {
+    margin-top: 0px;
+    font-size: 12px;
+}
+
+.submission-percentage {
+    margin-top: -4px;
+    font-size: 16px;
+}
+
+.submission-header-format{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+</style>
 <body>
     <div class="submissions-container">
         <!-- Header -->
@@ -15,7 +49,7 @@
                 <h1 class="submissions-title">My Submissions</h1>
                 <p class="submissions-subtitle">View and review your exam submissions</p>
             </div>
-            <button class="btn-back-to-exams" onclick="window.location.href='studentExam.html'">
+            <button class="btn-back-to-exams" onclick="window.location.href='/studentExam'">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -110,7 +144,7 @@
                         <h3 class="submission-card-title">${submission.exam_title}</h3>
                         <span class="submission-status-badge status-${submission.status}">${formatStatus(submission.status)}</span>
                     </div>
-                    
+                    <div class=submission-header-format>
                     <p class="submission-id">ID: ${submission.submission_id}</p>
                     
                     <div class="submission-details">
@@ -121,16 +155,11 @@
                                 <line x1="8" y1="2" x2="8" y2="6"/>
                                 <line x1="3" y1="10" x2="21" y2="10"/>
                             </svg>
-                            <span>${submission.date || 'N/A'}</span>
+                            <span>${submission.date +"       "+ formatTime(submission.time) || 'N/A'}</span>
                         </div>
-                        <div class="submission-detail-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 6v6l4 2"/>
-                            </svg>
-                            <span>${formatTime(submission.time)}</span>
-                        </div>
+                    </div>    
                     </div>
+                    
 
                     <div class="submission-score-section">
                         ${
@@ -141,7 +170,7 @@
                                 <div class="submission-percentage">${submission.percentage}</div>
                             `
                             : `
-                                <div class="submission-score-large">-</div>
+                                <div class="submission-score-large">Pending</div>
                                 <div class="submission-score-label">Not graded yet</div>
                                 <div class="submission-percentage">-</div>
                             `
