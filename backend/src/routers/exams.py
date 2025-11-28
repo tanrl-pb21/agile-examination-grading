@@ -263,6 +263,8 @@ def submit_exam(submission: ExamSubmission):
     - MCQ questions are auto-graded
     - Essay questions are marked as pending for teacher review
     """
+    # service.validate_submission_time(submission.exam_code)
+
     try:
         result = service.submit_exam(
             exam_code=submission.exam_code,

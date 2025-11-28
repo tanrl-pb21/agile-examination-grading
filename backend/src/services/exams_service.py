@@ -539,6 +539,83 @@ class ExamService:
             "end_time": end_time.isoformat(),
         }
 
+    ##ep test
+    # def get_exam_duration_by_code(self, exam_code: str) -> dict:
+    #     from datetime import datetime, timedelta, timezone
+
+    #     MALAYSIA_TZ = timezone(timedelta(hours=8))
+
+    #     sql = """
+    #         SELECT date, start_time, end_time, duration
+    #         FROM exams
+    #         WHERE exam_code = %s
+    #     """
+
+    #     with get_conn() as conn:
+    #         with conn.cursor(row_factory=dict_row) as cur:
+    #             cur.execute(sql, (exam_code,))
+    #             row = cur.fetchone()
+
+    #     if not row:
+    #         raise ValueError("Exam not found")
+
+    #     # 1. Extract raw values
+    #     exam_date = row["date"]
+    #     start_time = row["start_time"]
+    #     end_time = row["end_time"]
+    #     duration_minutes = row["duration"]
+
+    #     # 2. Convert to Python date/time if needed
+    #     if isinstance(exam_date, str):
+    #         exam_date = datetime.strptime(exam_date, "%Y-%m-%d").date()
+
+    #     if isinstance(start_time, str):
+    #         start_time = datetime.strptime(start_time, "%H:%M:%S").time()
+    #     elif isinstance(start_time, timedelta):
+    #         # PostgreSQL sometimes returns time as timedelta
+    #         total_seconds = int(start_time.total_seconds())
+    #         hours = total_seconds // 3600
+    #         minutes = (total_seconds % 3600) // 60
+    #         seconds = total_seconds % 60
+    #         start_time = time(hours, minutes, seconds)
+
+    #     if isinstance(end_time, str):
+    #         end_time = datetime.strptime(end_time, "%H:%M:%S").time()
+    #     elif isinstance(end_time, timedelta):
+    #         # PostgreSQL sometimes returns time as timedelta
+    #         total_seconds = int(end_time.total_seconds())
+    #         hours = total_seconds // 3600
+    #         minutes = (total_seconds % 3600) // 60
+    #         seconds = total_seconds % 60
+    #         end_time = time(hours, minutes, seconds)
+
+    #     # 3. Combine into Malaysia timezone datetime
+    #     start_dt = datetime.combine(exam_date, start_time, MALAYSIA_TZ)
+    #     end_dt = datetime.combine(exam_date, end_time, MALAYSIA_TZ)
+    #     now = datetime.now(MALAYSIA_TZ)
+
+    #     # 4. Calculate duration
+    #     duration_seconds = int((end_dt - start_dt).total_seconds())
+
+    #     # 5. Calculate remaining time
+    #     # If exam hasn't started yet, show full duration
+    #     if now < start_dt:
+    #         remaining_seconds = duration_seconds
+    #     # If exam has started, show time until end
+    #     elif now < end_dt:
+    #         remaining_seconds = max(int((end_dt - now).total_seconds()), 0)
+    #     # If exam has ended, show 0
+    #     else:
+    #         remaining_seconds = 0
+
+    #     return {
+    #         "duration_seconds": duration_seconds,
+    #         "remaining_seconds": remaining_seconds,
+    #         "date": exam_date.isoformat(),
+    #         "start_time": start_time.isoformat(),
+    #         "end_time": end_time.isoformat(),
+    #     }
+
     def get_questions_by_exam_code(self, exam_code: str):
 
         sql_exam = """
@@ -776,6 +853,68 @@ class ExamService:
     # ===========================
     # MAIN SUBMISSION FUNCTION
     # ===========================
+    def validate_submission_time(self, exam_code: str):
+        """
+        Validate that submission is happening within exam time window.
+        Raises ValueError if submission is late.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        MALAYSIA_TZ = timezone(timedelta(hours=8))
+
+        sql = """
+            SELECT date, start_time, end_time
+            FROM exams
+            WHERE exam_code = %s
+        """
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (exam_code,))
+                exam = cur.fetchone()
+
+        if not exam:
+            raise ValueError("Exam not found")
+
+        # Extract exam date and times
+        exam_date = exam["date"]
+        start_time = exam["start_time"]
+        end_time = exam["end_time"]
+
+        # Convert to Python objects if needed
+        if isinstance(exam_date, str):
+            exam_date = datetime.strptime(exam_date, "%Y-%m-%d").date()
+
+        if isinstance(start_time, str):
+            start_time = datetime.strptime(start_time, "%H:%M:%S").time()
+
+        if isinstance(end_time, str):
+            end_time = datetime.strptime(end_time, "%H:%M:%S").time()
+
+        # Create timezone-aware datetime objects
+        start_dt = datetime.combine(exam_date, start_time, MALAYSIA_TZ)
+        end_dt = datetime.combine(exam_date, end_time, MALAYSIA_TZ)
+        now = datetime.now(MALAYSIA_TZ)
+
+        # Check if submission is before exam start
+        if now < start_dt:
+            raise ValueError(
+                f"Cannot submit exam before start time. "
+                f"Exam starts at {start_time.strftime('%H:%M')} on {exam_date.strftime('%Y-%m-%d')}"
+            )
+
+        # Check if submission is after exam end
+        if now > end_dt:
+            time_over = now - end_dt
+            minutes_late = int(time_over.total_seconds() / 60)
+            raise ValueError(
+                f"Submission rejected: The exam ended at {end_time.strftime('%H:%M')}. "
+                f"You are {minutes_late} minute(s) late. Late submissions are not accepted."
+            )
+
+        # Submission is within valid time window
+        print(f"✓ Submission time validated for exam {exam_code}")
+        return True
 
     def submit_exam(self, exam_code: str, user_id: int, answers: list) -> dict:
         """
