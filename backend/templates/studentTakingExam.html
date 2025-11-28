@@ -21,7 +21,7 @@
                 <div class="exam-progress">
                     <span id="examProgressText">0/0</span>
                 </div>
-                <button class="btn-submit-exam" onclick="submitExam()">
+                <button class="btn-submit-exam" onclick="handleSubmitClick()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="20 6 9 17 4 12"/>
                     </svg>
@@ -37,7 +37,7 @@
 
         <!-- Submit Button Bottom -->
         <div class="exam-submit-footer">
-            <button class="btn-submit-exam-large" onclick="submitExam()">
+            <button class="btn-submit-exam-large" onclick="handleSubmitClick()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="20 6 9 17 4 12"/>
                 </svg>
@@ -47,219 +47,300 @@
     </div>
 
     <script>
+        // ===========================
+        // GLOBAL STATE
+        // ===========================
         let examQuestionsData = [];
         let selectedAnswers = {};
-    
-        // -------------------------------
-        // LOAD QUESTIONS FROM BACKEND
-        // -------------------------------
+        let currentExamCode = null;
+        let currentUserId = 1; // TODO: Get from session/auth system
+        let timerInterval = null;
+
+        // ===========================
+        // INITIALIZATION
+        // ===========================
+        function initializeExam() {
+            const params = new URLSearchParams(window.location.search);
+            currentExamCode = params.get("exam_code");
+            
+            if (!currentExamCode) {
+                alert("No exam code provided!");
+                return;
+            }
+            
+            loadExamQuestions(currentExamCode);
+            loadExamDuration(currentExamCode);
+        }
+
+        // ===========================
+        // LOAD EXAM DATA
+        // ===========================
         async function loadExamQuestions(examCode) {
             try {
                 const res = await axios.get(`/exams/code/${examCode}/questions`);
-                const raw = res.data.questions;
-    
-                examQuestionsData = raw.map((q, index) => ({
-                    id: q.id,
-    
-                    // Convert DB type → UI type
-                    type: q.question_type.toLowerCase() === "mcq"
-                        ? "Multiple Choice"
-                        : "Essay Question",
-    
-                    marks: q.marks,
-                    questionNumber: index + 1,
-                    totalQuestions: raw.length,
-                    question: q.question_text,
-    
-                    // Convert DB options → UI structure
-                    options: q.options.map((opt, idx) => ({
-                        id: opt.id,   // REAL DB ID (21,22,23,24...)
-                        label: String.fromCharCode(65 + idx), // A,B,C,D...
-                        text: opt.option_text
-                    })),
-    
-                    note: q.question_type.toLowerCase() === "essay"
-                        ? "Write a detailed answer. This will be manually graded by your instructor."
-                        : null
-                }));
-    
-                renderExamQuestions();
-                updateProgress();
-    
+                const rawQuestions = res.data.questions;
+                
+                examQuestionsData = transformQuestionsData(rawQuestions);
+                renderAllQuestions();
+                updateProgressDisplay();
+                
             } catch (err) {
                 console.error("Error loading exam questions:", err);
                 alert("Unable to load exam questions");
             }
         }
-    
-        // -------------------------------
-        // RENDER QUESTIONS (UI)
-        // -------------------------------
-        function renderExamQuestions() {
-            const container = document.getElementById('questionsContainer');
-    
-            container.innerHTML = examQuestionsData.map(q => {
-    
-                // === Multiple Choice ===
-                if (q.type === 'Multiple Choice') {
-                    return `
-                        <div class="question-card-student">
-                            <div class="question-header-student">
-                                <div class="question-type-badge mcq-badge">
-                                    <span class="question-number-circle">${q.questionNumber}</span>
-                                    <span>${q.type}</span>
-                                </div>
-                                <span class="question-marks">${q.marks} marks</span>
-                                <span class="question-counter">Question ${q.questionNumber} of ${q.totalQuestions}</span>
-                            </div>
-    
-                            <div class="question-content-student">
-                                <h3 class="question-text-student">${q.question}</h3>
-    
-                                <div class="options-list-student">
-                                    ${q.options.map(opt => `
-                                        <label class="option-student ${selectedAnswers[q.id] == opt.id ? 'selected' : ''}">
-                                            <input
-                                                type="radio"
-                                                name="question${q.id}"
-                                                value="${opt.id}"
-                                                onchange="selectAnswer(${q.id}, ${opt.id})"
-                                                ${selectedAnswers[q.id] == opt.id ? 'checked' : ''}
-                                            >
-                                            <span class="option-radio-custom"></span>
-                                            <span class="option-label">${opt.label}.</span>
-                                            <span class="option-text">${opt.text}</span>
-                                        </label>
-                                    `).join("")}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-    
-                // === Essay ===
-                return `
-                    <div class="question-card-student">
-                        <div class="question-header-student">
-                            <div class="question-type-badge essay-badge">
-                                <span class="question-number-circle">${q.questionNumber}</span>
-                                <span>${q.type}</span>
-                            </div>
-                            <span class="question-marks">${q.marks} marks</span>
-                            <span class="question-counter">Question ${q.questionNumber} of ${q.totalQuestions}</span>
-                        </div>
-    
-                        <div class="question-content-student">
-                            <h3 class="question-text-student">${q.question}</h3>
-                            <textarea 
-                                class="essay-textarea" 
-                                rows="10"
-                                placeholder="Type your answer here..."
-                                oninput="updateEssayAnswer(${q.id}, this.value)"
-                            >${selectedAnswers[q.id] || ''}</textarea>
-                            <p class="essay-note">${q.note}</p>
-                        </div>
-                    </div>
-                `;
-            }).join("");
-        }
-    
-        // -------------------------------
-        // SAVE MCQ SELECTION
-        // -------------------------------
-        function selectAnswer(questionId, optionId) {
-            selectedAnswers[questionId] = optionId;
-            updateProgress();
-            renderExamQuestions(); // refresh highlight + checked state
+
+        function transformQuestionsData(rawQuestions) {
+            return rawQuestions.map((q, index) => ({
+                id: q.id,
+                type: q.question_type.toLowerCase() === "mcq" 
+                    ? "Multiple Choice" 
+                    : "Essay Question",
+                marks: q.marks,
+                questionNumber: index + 1,
+                totalQuestions: rawQuestions.length,
+                question: q.question_text,
+                options: q.options.map((opt, idx) => ({
+                    id: opt.id,
+                    label: String.fromCharCode(65 + idx), // A, B, C, D...
+                    text: opt.option_text
+                })),
+                note: q.question_type.toLowerCase() === "essay"
+                    ? "Write a detailed answer. This will be manually graded by your instructor."
+                    : null
+            }));
         }
 
-        // -------------------------------
-        // SAVE ESSAY ANSWER
-        // -------------------------------
-        function updateEssayAnswer(questionId, value) {
+        // ===========================
+        // RENDER UI
+        // ===========================
+        function renderAllQuestions() {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = examQuestionsData.map(q => {
+                return q.type === 'Multiple Choice' 
+                    ? renderMCQQuestion(q) 
+                    : renderEssayQuestion(q);
+            }).join("");
+        }
+
+        function renderMCQQuestion(question) {
+            return `
+                <div class="question-card-student">
+                    <div class="question-header-student">
+                        <div class="question-type-badge mcq-badge">
+                            <span class="question-number-circle">${question.questionNumber}</span>
+                            <span>${question.type}</span>
+                        </div>
+                        <span class="question-marks">${question.marks} marks</span>
+                        <span class="question-counter">Question ${question.questionNumber} of ${question.totalQuestions}</span>
+                    </div>
+
+                    <div class="question-content-student">
+                        <h3 class="question-text-student">${question.question}</h3>
+
+                        <div class="options-list-student">
+                            ${renderMCQOptions(question)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMCQOptions(question) {
+            return question.options.map(opt => `
+                <label class="option-student ${isOptionSelected(question.id, opt.id) ? 'selected' : ''}">
+                    <input
+                        type="radio"
+                        name="question${question.id}"
+                        value="${opt.id}"
+                        onchange="handleMCQSelection(${question.id}, ${opt.id})"
+                        ${isOptionSelected(question.id, opt.id) ? 'checked' : ''}
+                    >
+                    <span class="option-radio-custom"></span>
+                    <span class="option-label">${opt.label}.</span>
+                    <span class="option-text">${opt.text}</span>
+                </label>
+            `).join("");
+        }
+
+        function renderEssayQuestion(question) {
+            return `
+                <div class="question-card-student">
+                    <div class="question-header-student">
+                        <div class="question-type-badge essay-badge">
+                            <span class="question-number-circle">${question.questionNumber}</span>
+                            <span>${question.type}</span>
+                        </div>
+                        <span class="question-marks">${question.marks} marks</span>
+                        <span class="question-counter">Question ${question.questionNumber} of ${question.totalQuestions}</span>
+                    </div>
+
+                    <div class="question-content-student">
+                        <h3 class="question-text-student">${question.question}</h3>
+                        <textarea 
+                            class="essay-textarea" 
+                            rows="10"
+                            placeholder="Type your answer here..."
+                            oninput="handleEssayInput(${question.id}, this.value)"
+                        >${selectedAnswers[question.id] || ''}</textarea>
+                        <p class="essay-note">${question.note}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ===========================
+        // ANSWER HANDLING
+        // ===========================
+        function handleMCQSelection(questionId, optionId) {
+            selectedAnswers[questionId] = optionId;
+            updateProgressDisplay();
+            renderAllQuestions();
+        }
+
+        function handleEssayInput(questionId, value) {
             if (value.trim()) {
                 selectedAnswers[questionId] = value;
             } else {
                 delete selectedAnswers[questionId];
             }
-            updateProgress();
+            updateProgressDisplay();
         }
-    
-        // -------------------------------
-        // PROGRESS COUNTER (FIXED)
-        // -------------------------------
-        function updateProgress() {
+
+        function isOptionSelected(questionId, optionId) {
+            return selectedAnswers[questionId] == optionId;
+        }
+
+        // ===========================
+        // PROGRESS TRACKING
+        // ===========================
+        function updateProgressDisplay() {
             const answered = Object.keys(selectedAnswers).length;
-            const total = examQuestionsData.length; // ✅ Count ALL questions (MCQ + Essay)
+            const total = examQuestionsData.length;
             document.getElementById('examProgressText').textContent = `${answered}/${total}`;
         }
-    
-        // -------------------------------
-        // SUBMIT
-        // -------------------------------
-        function submitExam() {
+
+        function getUnansweredCount() {
             const total = examQuestionsData.length;
             const answered = Object.keys(selectedAnswers).length;
+            return total - answered;
+        }
+
+        // ===========================
+        // SUBMISSION
+        // ===========================
+        function handleSubmitClick() {
+            const unanswered = getUnansweredCount();
             
-            if (answered < total) {
-                if (!confirm(`You have only answered ${answered} out of ${total} questions. Do you still want to submit?`)) {
+            if (unanswered > 0) {
+                const confirmMsg = `You have ${unanswered} unanswered question(s). Do you still want to submit?`;
+                if (!confirm(confirmMsg)) {
                     return;
                 }
             }
             
             if (confirm("Are you sure you want to submit your exam?")) {
-                alert("Exam submitted successfully!");
-                window.location.href = "exam-list.html";
+                submitExamToBackend();
             }
         }
-    
-        // -------------------------------
-        // TIMER (UNCHANGED)
-        // -------------------------------
+
+        async function submitExamToBackend() {
+            try {
+                // Prepare submission data
+                const submissionData = prepareSubmissionData();
+                
+                // Send to backend
+                const response = await axios.post('/exams/submit', submissionData);
+                
+                // Handle response
+                handleSubmissionResponse(response.data);
+                
+            } catch (error) {
+                console.error("Submission error:", error);
+                handleSubmissionError(error);
+            }
+        }
+
+        function prepareSubmissionData() {
+            const answers = Object.entries(selectedAnswers).map(([questionId, answer]) => ({
+                question_id: parseInt(questionId),
+                answer: answer
+            }));
+            
+            return {
+                exam_code: currentExamCode,
+                user_id: currentUserId,
+                answers: answers
+            };
+        }
+
+        function handleSubmissionResponse(data) {
+            clearInterval(timerInterval);
+            
+            let message = data.message;
+            message += `\n\nScore: ${data.total_score}/${data.max_score}`;
+            if (data.grade !== "Pending") {
+                message += `\nGrade: ${data.grade}`;
+            }
+            
+            alert(message);
+            
+            // Redirect to exam list or results page
+            window.location.href = "exam-list.html";
+        }
+
+        function handleSubmissionError(error) {
+            if (error.response) {
+                alert(`Submission failed: ${error.response.data.detail}`);
+            } else {
+                alert("Submission failed. Please check your connection and try again.");
+            }
+        }
+
+        // ===========================
+        // TIMER
+        // ===========================
         async function loadExamDuration(examCode) {
             try {
                 const res = await axios.get(`/exams/code/${examCode}/duration`);
                 const data = res.data;
-    
-                let remainingSeconds = data.remaining_seconds;
-                const timerDisplay = document.getElementById("examTimer");
-    
-                const timer = setInterval(() => {
-                    let hrs = Math.floor(remainingSeconds / 3600);
-                    let mins = Math.floor((remainingSeconds % 3600) / 60);
-                    let secs = remainingSeconds % 60;
-    
-                    timerDisplay.textContent =
-                        `Time Left: ${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-    
-                    remainingSeconds--;
-    
-                    if (remainingSeconds <= 0) {
-                        clearInterval(timer);
-                        alert("Time is up! Submitting exam...");
-                        submitExam();
-                    }
-                }, 1000);
-    
+                startExamTimer(data.remaining_seconds);
+                
             } catch (error) {
                 console.error("Error loading exam duration:", error);
                 alert("Failed to load exam timer.");
             }
         }
-    
-        // -------------------------------
-        // ON PAGE LOAD
-        // -------------------------------
-        const params = new URLSearchParams(window.location.search);
-        const examCode = params.get("exam_code");
-    
-        if (examCode) {
-            loadExamQuestions(examCode);
-            loadExamDuration(examCode);
-        } else {
-            alert("No exam code provided!");
+
+        function startExamTimer(remainingSeconds) {
+            const timerDisplay = document.getElementById("examTimer");
+            
+            timerInterval = setInterval(() => {
+                const timeStr = formatTime(remainingSeconds);
+                timerDisplay.textContent = `Time Left: ${timeStr}`;
+                
+                remainingSeconds--;
+                
+                if (remainingSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    alert("Time is up! Submitting exam...");
+                    submitExamToBackend();
+                }
+            }, 1000);
         }
+
+        function formatTime(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            return `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+        }
+
+        // ===========================
+        // PAGE LOAD
+        // ===========================
+        initializeExam();
     </script>
-    
 </body>
 </html>
