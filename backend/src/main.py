@@ -40,19 +40,18 @@ def exam_details(request: Request, id: int):
         "examDetails.html",
         {"request": request, "exam_id": id}
     )
-
 # http://127.0.0.1:8000/examDetails?id=1
 @app.get("/examGrading", response_class=HTMLResponse)
-def exam_grading(request: Request, submissionId: str, examId: int):
+def exam_grading(request: Request, submissionId: int, examId: int):  # Changed to int
     return templates.TemplateResponse(
         "examGrading.html",
         {
             "request": request,
-            "submissionId": submissionId,
-            "examId": examId
+            "submissionId": submissionId,  
+            "examId": examId                
         }
     )
-# http://127.0.0.1:8000/examGrading?submissionId=sub1001&examId=1
+# http://127.0.0.1:8000/examGrading?submissionId=4&examId=42
 
 
 # Student: exam list
@@ -63,11 +62,18 @@ def student_exam_list(request: Request):
     )
 
 # Student: exam taking
+# @app.get("/studentTakingExam", response_class=HTMLResponse)
+# def student_taking_exam(request: Request):
+#     return templates.TemplateResponse(
+#         "studentTakingExam.html", {"request": request}
+#     )
 @app.get("/studentTakingExam", response_class=HTMLResponse)
-def student_taking_exam(request: Request):
+def student_taking_exam(request: Request, exam_code: str):
     return templates.TemplateResponse(
-        "studentTakingExam.html", {"request": request}
+        "studentTakingExam.html",
+        {"request": request, "exam_code": exam_code}
     )
+
 
 # Student: submission list
 @app.get("/studentSubmissionList", response_class=HTMLResponse)

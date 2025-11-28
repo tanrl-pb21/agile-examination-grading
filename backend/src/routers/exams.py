@@ -199,3 +199,60 @@ def delete_exam(exam_id: int):
         return {"message": "Exam deleted successfully"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/code/{exam_code}/duration")
+def get_exam_duration_by_code(exam_code: str):
+    try:
+        return service.get_exam_duration_by_code(exam_code)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/code/{exam_code}/questions")
+def get_questions_by_exam_code(exam_code: str):
+    exam_code = exam_code.strip()   # prevent whitespace issues
+
+    try:
+        return service.get_questions_by_exam_code(exam_code)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+
+from typing import List, Dict, Any, Union
+from pydantic import BaseModel
+
+# ===========================
+# REQUEST MODELS
+# ===========================
+
+class AnswerSubmit(BaseModel):
+    question_id: int
+    answer: Union[int, str]  # int for MCQ (option_id), str for Essay (text)
+
+class ExamSubmission(BaseModel):
+    exam_code: str
+    user_id: int
+    answers: List[AnswerSubmit]
+
+
+# ===========================
+# SUBMISSION ENDPOINT
+# ===========================
+
+@router.post("/submit")
+def submit_exam(submission: ExamSubmission):
+    """
+    Submit exam answers.
+    - MCQ questions are auto-graded
+    - Essay questions are marked as pending for teacher review
+    """
+    try:
+        result = service.submit_exam(
+            exam_code=submission.exam_code,
+            user_id=submission.user_id,
+            answers=submission.answers
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
