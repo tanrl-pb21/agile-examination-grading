@@ -97,7 +97,27 @@
                 <div class="grading-right-column" id="questionsContainer">
                     <div style="text-align:center;padding:40px;color:#6c757d;">Loading questions...</div>
                 </div>
+
+                <div class="grading-right-column" style="margin-top: 20px;">
             </div>
+                                <div class="grading-section">
+                        <div class="grading-section-header">
+                            <h3 class="grading-section-title">Overall Feedback</h3>
+                        </div>
+                        <div class="grading-question-card">
+                            <div class="grading-question-content">
+                                <div class="essay-grading-section">
+                                    <div class="essay-feedback-group" style="width: 100%;">
+                                        <label for="overallFeedback">Provide overall feedback for the student (Optional)</label>
+                                        <textarea id="overallFeedback" class="essay-feedback-input" 
+                                            placeholder="Enter general comments about the student's performance on this exam..." 
+                                            rows="5"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
         </main>
     </div>
 
@@ -173,6 +193,10 @@
 
                 renderPage();
                 updateScores();
+
+                if (gradingData.submission.overall_feedback) {
+                    document.getElementById('overallFeedback').value = gradingData.submission.overall_feedback;
+                }
             } catch (error) {
                 console.error('Error loading grading data:', error);
                 alert('Failed to load submission: ' + (error.response?.data?.detail || error.message));
@@ -415,12 +439,14 @@
                 const essayScore = Object.values(essayGrades).reduce((sum, g) => sum + g.score, 0);
                 const totalScore = mcqScore + essayScore;
 
+                const overallFeedback = document.getElementById('overallFeedback').value.trim();
+
                 const payload = {
                     submission_id: parseInt(submissionId),
                     essay_grades: Object.values(essayGrades),
                     total_score: totalScore,
                     score_grade: calculateGrade(totalScore, gradingData.questions.reduce((sum, q) => sum + q.marks, 0)),
-                    overall_feedback: null
+                    overall_feedback: overallFeedback||null
                 };
 
                 await axios.post('/grading/save', payload);
