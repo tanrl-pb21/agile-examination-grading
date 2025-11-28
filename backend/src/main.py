@@ -7,11 +7,15 @@ from fastapi.templating import Jinja2Templates
 from src.routers import exams
 from src.routers import course
 from src.routers import question
+from src.routers import submission
+from src.routers import grading
 
 app = FastAPI()
 app.include_router(exams.router)
 app.include_router(course.router)
 app.include_router(question.router)
+app.include_router(submission.router)
+app.include_router(grading.router)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
