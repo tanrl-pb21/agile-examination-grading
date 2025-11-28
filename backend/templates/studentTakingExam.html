@@ -69,7 +69,7 @@
         let examQuestionsData = [];
         let selectedAnswers = {};
         let currentExamCode = null;
-        let currentUserId = 1; // TODO: Get from session/auth system
+        let currentUserId = 3; // TODO: Get from session/auth system
         let timerInterval = null;
         let examHasEnded = false; // Track if exam time is up
         let isSubmitting = false; // Prevent duplicate submissions
@@ -377,10 +377,10 @@
                 clearInterval(timerInterval);
 
                 let message = data.message;
-                message += `\n\nScore: ${data.total_score}/${data.max_score}`;
-                if (data.grade !== "Pending") {
-                    message += `\nGrade: ${data.grade}`;
-                }
+                // message += `\n\nScore: ${data.total_score}/${data.max_score}`;
+                // if (data.grade !== "Pending") {
+                //     message += `\nGrade: ${data.grade}`;
+                // }
 
                 alert(message);
 

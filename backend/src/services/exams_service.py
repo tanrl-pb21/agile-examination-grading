@@ -643,6 +643,50 @@ class ExamService:
 
         return {"questions": questions}
 
+    def get_questions_by_exam_code(self, exam_code: str):
+
+        sql_exam = """
+            SELECT id 
+            FROM exams 
+            WHERE exam_code = %s
+        """
+
+        sql_questions = """
+            SELECT id, question_text, question_type, marks
+            FROM question
+            WHERE exam_id = %s
+            ORDER BY id
+        """
+
+        sql_options = """
+            SELECT id, option_text
+            FROM "questionOption"
+            WHERE question_id = %s
+            ORDER BY id
+        """
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+
+                # Get exam ID
+                cur.execute(sql_exam, (exam_code,))
+                exam = cur.fetchone()
+                if not exam:
+                    raise ValueError("Exam not found")
+
+                exam_id = exam["id"]
+
+                # Get all questions
+                cur.execute(sql_questions, (exam_id,))
+                questions = cur.fetchall()
+
+                # Get options for each question
+                for q in questions:
+                    cur.execute(sql_options, (q["id"],))
+                    q["options"] = cur.fetchall()
+
+        return {"questions": questions}
+
     def _get_exam_id_by_code(self, cursor, exam_code: str) -> int:
         """Get exam ID from exam code"""
         sql = "SELECT id FROM exams WHERE exam_code = %s"
@@ -798,25 +842,25 @@ class ExamService:
             "max_score": marks,
         }
 
-    # def _calculate_grade(self, score: int, max_score: int) -> str:
-    #     """Calculate letter grade from score"""
-    #     if max_score == 0:
-    #         return "N/A"
+    def _calculate_grade(self, score: int, max_score: int) -> str:
+        """Calculate letter grade from score"""
+        if max_score == 0:
+            return "N/A"
 
-    #     percentage = (score / max_score) * 100
+        percentage = (score / max_score) * 100
 
-    #     if percentage >= 90:
-    #         return "A+"
-    #     elif percentage >= 80:
-    #         return "A"
-    #     elif percentage >= 70:
-    #         return "B"
-    #     elif percentage >= 60:
-    #         return "C"
-    #     elif percentage >= 50:
-    #         return "D"
-    #     else:
-    #         return "F"
+        if percentage >= 90:
+            return "A+"
+        elif percentage >= 80:
+            return "A"
+        elif percentage >= 70:
+            return "B"
+        elif percentage >= 60:
+            return "C"
+        elif percentage >= 50:
+            return "D"
+        else:
+            return "F"
 
     def _update_submission_final(
         self, cursor, submission_id: int, total_score: int, has_essay: bool, grade: str
@@ -954,11 +998,11 @@ class ExamService:
                         graded_results.append(result)
 
                 # Step 4: Calculate grade
-                # grade = self._calculate_grade(total_score, max_score)
+                grade = self._calculate_grade(total_score, max_score)
 
                 # Step 5: Update submission with final results
                 self._update_submission_final(
-                    cur, submission_id, total_score, has_essay
+                    cur, submission_id, total_score, has_essay, grade
                 )
 
                 # Commit transaction
