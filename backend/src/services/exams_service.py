@@ -1,7 +1,10 @@
 from src.db import get_conn
+
+from src.db import get_conn
 from psycopg.rows import dict_row
 from datetime import datetime, date, time
 import re
+
 
 
 def validate_date_obj(dt: date):
@@ -79,7 +82,125 @@ def time_overlap(start1, end1, start2, end2):
 
 
 class ExamService:
+    def get_available_exams_for_student(self, student_id: int) -> list:
+        """
+        Get exams currently open (start_time <= now <= end_time) 
+        for courses student is enrolled in.
+        """
+        from datetime import datetime, timedelta, timezone
+        
+        MALAYSIA_TZ = timezone(timedelta(hours=8))
+        now = datetime.now(MALAYSIA_TZ)
+        current_time = now.time()
+        
+        sql = """
+            SELECT DISTINCT 
+                e.id, 
+                e.title, 
+                e.exam_code, 
+                e.course,
+                c.course_name,
+                c.course_code,
+                e.date, 
+                e.start_time, 
+                e.end_time, 
+                e.duration, 
+                e.status
+            FROM exams e
+            INNER JOIN course c ON e.course = c.id
+            INNER JOIN "studentCourse" sc ON sc.course_id = e.course
+            WHERE 
+                sc.student_id = %s
+                AND e.date = CURRENT_DATE
+                AND e.start_time <= %s::time
+                AND e.end_time >= %s::time
+            ORDER BY e.start_time ASC;
+        """
+        
+        try:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(sql, (student_id, current_time, current_time))
+                    rows = cur.fetchall()
+            
+            # Convert time objects to strings
+            if rows:
+                for row in rows:
+                    if row['start_time'] and not isinstance(row['start_time'], str):
+                        row['start_time'] = row['start_time'].strftime('%H:%M')
+                    if row['end_time'] and not isinstance(row['end_time'], str):
+                        row['end_time'] = row['end_time'].strftime('%H:%M')
+            
+            return rows if rows else []
+            
+        except Exception as e:
+            print(f"ERROR in get_available_exams_for_student: {str(e)}")
+            return []
 
+
+    def get_upcoming_exams_for_student(self, student_id: int) -> list:
+        """
+        Get exams scheduled for future for courses student is enrolled in.
+        Only includes exams that haven't started yet.
+        
+        Criteria:
+        - date > today (exams scheduled for future dates)
+        - OR (date = today AND start_time > now) (exams today that haven't started)
+        """
+        from datetime import datetime, timedelta, timezone
+        
+        MALAYSIA_TZ = timezone(timedelta(hours=8))
+        now = datetime.now(MALAYSIA_TZ)
+        current_date = now.date()
+        current_time = now.time()
+        
+        sql = """
+            SELECT DISTINCT 
+                e.id, 
+                e.title, 
+                e.exam_code, 
+                e.course,
+                c.course_name,
+                c.course_code,
+                e.date, 
+                e.start_time, 
+                e.end_time, 
+                e.duration, 
+                e.status
+            FROM exams e
+            INNER JOIN course c ON e.course = c.id
+            INNER JOIN "studentCourse" sc ON sc.course_id = e.course
+            WHERE 
+                sc.student_id = %s
+                AND (
+                    e.date > %s::date
+                    OR (e.date = %s::date AND e.start_time > %s::time)
+                )
+            ORDER BY e.date ASC, e.start_time ASC;
+        """
+        
+        try:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(sql, (student_id, current_date, current_date, current_time))
+                    rows = cur.fetchall()
+            
+            # Convert time objects to strings
+            if rows:
+                for row in rows:
+                    if row['start_time'] and not isinstance(row['start_time'], str):
+                        row['start_time'] = row['start_time'].strftime('%H:%M')
+                    if row['end_time'] and not isinstance(row['end_time'], str):
+                        row['end_time'] = row['end_time'].strftime('%H:%M')
+            
+            return rows if rows else []
+            
+        except Exception as e:
+            print(f"ERROR in get_upcoming_exams_for_student: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return []
+    
     def exam_code_exists(self, exam_code: str, exclude_exam_id: int = None):
         """Check if exam code already exists in database"""
         sql = "SELECT id FROM exams WHERE exam_code = %s"

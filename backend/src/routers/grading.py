@@ -214,6 +214,9 @@ def save_grades(grades: SaveGradesInput):
     Save grading results for a submission
     Updates essay question scores and overall submission score
     """
+    if grades.overall_feedback and len(grades.overall_feedback) > 5000:
+        raise HTTPException(status_code=400, detail="overall_feedback exceeds maximum length of 5000 characters")
+    
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:

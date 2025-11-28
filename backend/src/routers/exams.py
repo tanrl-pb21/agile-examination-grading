@@ -151,6 +151,34 @@ def get_student_exams(student_id: int):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/available")
+def get_available_exams_for_student(student_id: int = 1):
+    """
+    Get exams that are currently open for student's enrolled courses.
+    Filter by: start_time <= now <= end_time AND course in student's courses
+    """
+    try:
+        exams = service.get_available_exams_for_student(student_id)
+        return [convert_time_to_string(exam) for exam in exams] if exams else []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/upcoming")
+def get_upcoming_exams_for_student(student_id: int = 1):
+    """
+    Get exams scheduled for future for student's enrolled courses.
+    Filter by: date > today OR (date = today AND start_time > now) 
+    AND course in student's courses
+    """
+    try:
+        exams = service.get_upcoming_exams_for_student(student_id)
+        return [convert_time_to_string(exam) for exam in exams] if exams else []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 
 @router.get("/{exam_id}")
 def get_exam(exam_id: int):
@@ -166,6 +194,27 @@ def get_exam(exam_id: int):
     except Exception as e:
         print(f"❌ ERROR in get_exam: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/exams/{exam_id}/open")
+def open_exam(exam_id: int):
+    exam = service.get_exam_by_id(exam_id)
+
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    from datetime import datetime
+    now = datetime.now()
+
+    start_dt = datetime.strptime(f"{exam['date']} {exam['start_time']}", "%Y-%m-%d %H:%M")
+    end_dt = datetime.strptime(f"{exam['date']} {exam['end_time']}", "%Y-%m-%d %H:%M")
+
+    if now < start_dt:
+        raise HTTPException(status_code=403, detail="Exam not started yet")
+
+    if now > end_dt:
+        raise HTTPException(status_code=403, detail="Exam has ended")
+
+    return {"message": "Exam open", "exam": exam}
 
 
 @router.post("", status_code=201)
@@ -212,7 +261,7 @@ def delete_exam(exam_id: int):
         return {"message": "Exam deleted successfully"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
+    
 
 @router.get("/code/{exam_code}/duration")
 def get_exam_duration_by_code(exam_code: str):
