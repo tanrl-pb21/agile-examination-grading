@@ -1,182 +1,482 @@
-<!-- Key JavaScript functions that need to be fixed -->
-<script>
-async function loadExamData() {
-    try {
-        console.log('Fetching exam with ID:', examId);
-        
-        // Verify exam ID exists
-        const examResponse = await axios.get(`/exams/${examId}`);
-        const exam = examResponse.data;
-        
-        if (!exam) {
-            throw new Error('Exam ID does not exist');
-        }
-        
-        const questionsResponse = await axios.get(`/questions/exam/${examId}`);
-        const questions = questionsResponse.data;
+from src.db import get_conn
+from psycopg.rows import dict_row
+from datetime import datetime, date, time as dt_time
 
-        // Try to get submissions, but don't fail if it doesn't work
-        let submissions = [];
-        try {
-            const submissionsResponse = await axios.get(`/submissions/exam/${examId}/students`);
-            submissions = submissionsResponse.data || [];
-            console.log('Submissions data:', submissions);
-        } catch (submissionError) {
-            console.warn('Could not load submissions:', submissionError);
-            // Continue without submissions data
-        }
-        
-        console.log('Exam data:', exam);
-        console.log('Questions data:', questions);
-        
-        currentExam = transformExamData(exam);
-        currentExam.questions = transformQuestions(questions);
-        currentExam.submissions = transformSubmissions(submissions);
 
-        currentExam.totalStudents = submissions.length;
-        currentExam.submitted = submissions.filter(s => s.status === 'submitted').length;
-        currentExam.missed = submissions.filter(s => s.status === 'missed').length;
+class SubmissionService:
 
-        renderExamInfo();
-        renderQuestionStats();
-        renderQuestions();
-        renderSubmissionStats();
-        renderFilterTabs();
-        renderSubmissions();
-        
-    } catch (error) {
-        console.error('Error loading exam:', error);
-        if (error.response?.status === 404) {
-            alert('Error: The exam ID does not exist. Please check the exam ID and try again.');
-        } else {
-            alert('Failed to load exam details: ' + (error.response?.data?.detail || error.message));
-        }
-        window.location.href = '/examManagement';
-    }
-}
+    def get_exam_submissions(self, exam_id: int):
+        """
+        Get all submissions for an exam including students who haven't submitted.
+        Returns both submitted and not-submitted students.
+        """
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                # Verify exam exists and get exam details
+                cur.execute(
+                    """
+                    SELECT id, date, end_time, status, course
+                    FROM exams
+                    WHERE id = %s;
+                """,
+                    (exam_id,),
+                )
 
-function renderSubmissionStats() {
-    if (!currentExam) return;
-    const totalStudents = currentExam.totalStudents || 0;
-    const submitted = currentExam.submitted || 0;
-    const missed = currentExam.missed || 0;
-    
-    document.getElementById('submissionStats').innerHTML = `
-        <div class="stat-card blue"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="stat-content"><span class="stat-number">${totalStudents}</span><span class="stat-label">Total Students</span></div></div>
-        <div class="stat-card green"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="stat-content"><span class="stat-number">${submitted}</span><span class="stat-label">Submitted</span></div></div>
-        <div class="stat-card red"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="stat-content"><span class="stat-number">${missed}</span><span class="stat-label">Missed</span></div></div>
-    `;
-}
+                exam = cur.fetchone()
+                if not exam:
+                    raise ValueError(f"Exam with id {exam_id} not found")
 
-function renderFilterTabs() {
-    if (!currentExam) return;
-    const submissions = currentExam.submissions || [];
-    const submitted = submissions.filter(s => s.status === 'submitted').length;
-    const missed = submissions.filter(s => s.status === 'missed').length;
-    
-    document.getElementById('filterTabs').innerHTML = `
-        <button class="filter-tab ${currentFilter === 'all' ? 'active' : ''}" onclick="setFilter('all')">All (${submissions.length})</button>
-        <button class="filter-tab ${currentFilter === 'submitted' ? 'active' : ''}" onclick="setFilter('submitted')">Submitted (${submitted})</button>
-        <button class="filter-tab ${currentFilter === 'missed' ? 'active' : ''}" onclick="setFilter('missed')">Missed (${missed})</button>
-    `;
-}
+                course_id = exam["course"]
 
-function renderSubmissions() {
-    if (!currentExam) return;
-    
-    const submissions = currentExam.submissions || [];
-    const search = document.getElementById('submissionSearch')?.value.toLowerCase() || '';
-    let filtered = submissions;
-    
-    // Filter by status
-    if (currentFilter !== 'all') {
-        filtered = filtered.filter(s => s.status === currentFilter);
-    }
-    
-    // Filter by search
-    if (search) {
-        filtered = filtered.filter(s => 
-            s.studentName.toLowerCase().includes(search) || 
-            s.studentId.toLowerCase().includes(search) || 
-            s.studentEmail.toLowerCase().includes(search)
-        );
-    }
-    
-    const tbody = document.getElementById('submissionsTableBody');
-    
-    if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#6c757d;">No submissions found</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = filtered.map(s => {
-        // Format score display
-        let scoreDisplay = '-';
-        if (s.score !== null && s.score !== undefined) {
-            scoreDisplay = `${s.score}`;
-            if (s.percentage) {
-                scoreDisplay += ` <span style="color:#6c757d;">(${s.percentage})</span>`;
-            }
-            if (s.scoreGrade) {
-                scoreDisplay += ` <span style="color:#10b981;font-weight:600;">${s.scoreGrade}</span>`;
-            }
+                if not course_id:
+                    # No course assigned, return empty list
+                    return []
+
+                # Get all students enrolled in the course
+                cur.execute(
+                    """
+                    SELECT 
+                        u.id as user_id,
+                        u.user_email,
+                        sc.id as student_course_id
+                    FROM "user" u
+                    INNER JOIN "studentCourse" sc ON u.id = sc.student_id
+                    WHERE sc.course_id = %s AND u.user_role = 'student'
+                    ORDER BY u.user_email;
+                """,
+                    (course_id,),
+                )
+
+                students = cur.fetchall()
+
+                # Get all submissions for this exam
+                cur.execute(
+                    """
+                    SELECT 
+                        s.id,
+                        s.user_id,
+                        s.submission_date,
+                        s.submission_time,
+                        LOWER(s.status) as status,
+                        s.score,
+                        s.score_grade
+                    FROM submission s
+                    WHERE s.exam_code = %s;
+                """,
+                    (exam_id,),
+                )
+
+                submissions = cur.fetchall()
+
+                # Create a map of user_id to submission
+                submission_map = {sub["user_id"]: sub for sub in submissions}
+
+                # Check if exam has ended
+                exam_ended = self._is_exam_ended(exam["date"], exam["end_time"])
+
+                # Build result list
+                result = []
+                for student in students:
+                    user_id = student["user_id"]
+                    email = student["user_email"]
+
+                    if user_id in submission_map:
+                        sub = submission_map[user_id]
+
+                        # Determine status priority
+                        if sub["status"] == "graded":
+                            status = "graded"
+                        elif sub["score"] is not None:
+                            status = "graded"
+                        elif sub["status"] in ("submitted", None, ""):
+                            status = "submitted"
+                        else:
+                            status = sub["status"] or "submitted"
+
+                        result.append(
+                            {
+                                "user_id": user_id,
+                                "user_email": email,
+                                "submission_id": sub["id"],
+                                "submission_date": (
+                                    sub["submission_date"].isoformat()
+                                    if sub["submission_date"]
+                                    else None
+                                ),
+                                "submission_time": (
+                                    str(sub["submission_time"])
+                                    if sub["submission_time"]
+                                    else None
+                                ),
+                                "status": status,
+                                "score": sub["score"],
+                                "score_grade": sub["score_grade"],
+                            }
+                        )
+
+                    else:
+                        # Not submitted or absent
+                        if exam_ended:
+                            status = "absent"
+                        else:
+                            status = "not_submitted"
+
+                        result.append(
+                            {
+                                "user_id": user_id,
+                                "user_email": email,
+                                "submission_id": None,
+                                "submission_date": None,
+                                "submission_time": None,
+                                "status": status,
+                                "score": None,
+                                "score_grade": None,
+                            }
+                        )
+
+                return result
+
+    def _is_exam_ended(self, exam_date, end_time):
+        """Check if exam has ended based on date and end time"""
+        if not exam_date or not end_time:
+            return False
+
+        # Combine exam date and end time
+        if isinstance(end_time, str):
+            end_time = datetime.strptime(end_time, "%H:%M:%S").time()
+
+        exam_end_datetime = datetime.combine(exam_date, end_time)
+
+        # Compare with current datetime
+        return datetime.now() > exam_end_datetime
+
+    def get_submission_summary(self, exam_id: int):
+        """Get summary statistics for exam submissions"""
+        submissions = self.get_exam_submissions(exam_id)
+
+        total_students = len(submissions)
+        submitted = len(
+            [s for s in submissions if s["status"] in ("submitted", "graded")]
+        )
+        absent = len([s for s in submissions if s["status"] == "absent"])
+        not_submitted = len([s for s in submissions if s["status"] == "not_submitted"])
+
+        return {
+            "total_students": total_students,
+            "submitted": submitted,
+            "absent": absent,
+            "not_submitted": not_submitted,
+            "missed": absent + not_submitted,
         }
-        
-        // Format submission date/time
-        let submissionDateTime = '-';
-        if (s.submissionDate) {
-            submissionDateTime = s.submissionDate;
-            if (s.submissionTime) {
-                submissionDateTime += ` ${s.submissionTime}`;
-            }
-        }
-        
-        // Action button
-        let actionButton = '-';
-        if (s.status === 'submitted') {
-            if (s.score !== null && s.score !== undefined) {
-                // Already graded - show view button
-                actionButton = `
-                    <button class="btn-grade" onclick="goToGrading(${s.id})">
-                        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'>
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                        </svg>
-                        View
-                    </button>
-                `;
-            } else {
-                // Not graded yet - show grade button
-                actionButton = `
-                    <button class="btn-grade" onclick="goToGrading(${s.id})">
-                        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'>
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                        Grade
-                    </button>
-                `;
-            }
-        }
-        
-        return `
-            <tr>
-                <td>${s.studentId}</td>
-                <td>
-                    <div class="student-info">
-                        <div class="student-avatar ${s.avatarColor}">${s.avatar}</div>
-                        <div class="student-details">
-                            <span class="student-name">${s.studentName}</span>
-                            <span class="student-email">${s.studentEmail}</span>
-                        </div>
-                    </div>
-                </td>
-                <td><span class="submit-badge ${s.status}">${s.status.charAt(0).toUpperCase() + s.status.slice(1)}</span></td>
-                <td>${submissionDateTime}</td>
-                <td>${scoreDisplay}</td>
-                <td>${actionButton}</td>
-            </tr>
-        `;
-    }).join('');
-}
-</script>
+
+    # ========== STUDENT SUBMISSION METHODS ==========
+
+    def get_student_submissions(self, user_id: int):
+        """Get all submissions for a specific student"""
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT 
+                        s.id,
+                        s.exam_code,
+                        s.submission_date,
+                        s.submission_time,
+                        s.score,
+                        s.score_grade,
+                        LOWER(s.status) as status,
+                        e.title as exam_title,
+                        e.exam_code as exam_id
+                    FROM submission s
+                    INNER JOIN exams e ON s.exam_code = e.id
+                    WHERE s.user_id = %s
+                    ORDER BY s.submission_date DESC, s.submission_time DESC;
+                """,
+                    (user_id,),
+                )
+
+                submissions = cur.fetchall()
+
+                result = []
+                for sub in submissions:
+                    # Calculate total marks for the exam
+                    cur.execute(
+                        """
+                        SELECT SUM(marks) as total_marks
+                        FROM question
+                        WHERE exam_id = %s;
+                    """,
+                        (sub["exam_code"],),
+                    )
+
+                    total_marks_result = cur.fetchone()
+                    total_marks = (
+                        total_marks_result["total_marks"] if total_marks_result else 0
+                    )
+
+                    # Calculate percentage
+                    percentage = 0
+                    if total_marks and total_marks > 0 and sub["score"] is not None:
+                        percentage = (sub["score"] / total_marks) * 100
+
+                    # Determine display status
+                    display_status = sub["status"]
+                    # Correct status logic (do NOT convert pending → graded)
+                    if sub["status"] == "graded":
+                        display_status = "graded"
+                    elif sub["status"] == "pending":
+                        display_status = "pending"
+                    elif sub["status"] in ("submitted", None, ""):
+                        display_status = "submitted"
+                    else:
+                        display_status = sub["status"]
+
+                    result.append(
+                        {
+                            "id": sub["id"],
+                            "submission_id": f"sub{sub['id']}",
+                            "exam_title": sub["exam_title"],
+                            "exam_id": sub["exam_id"] or f"EXAM-{sub['exam_code']}",
+                            "date": (
+                                sub["submission_date"].strftime("%m/%d/%Y")
+                                if sub["submission_date"]
+                                else None
+                            ),
+                            "time": (
+                                str(sub["submission_time"])
+                                if sub["submission_time"]
+                                else None
+                            ),
+                            "score": (
+                                f"{sub['score']}/{total_marks}"
+                                if sub["score"] is not None
+                                else None
+                            ),
+                            "percentage": (
+                                f"{percentage:.1f}%"
+                                if sub["score"] is not None
+                                else None
+                            ),
+                            "status": display_status,
+                        }
+                    )
+
+                return result
+
+    def get_submission_review(self, submission_id: int, user_id: int):
+        """Get detailed review of a submission with questions and answers"""
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                # Get submission details
+                # Get submission details
+                cur.execute(
+                    """
+                    SELECT 
+                        s.id,
+                        s.exam_code,
+                        s.score,
+                        s.score_grade,
+                        s.overall_feedback,
+                        LOWER(s.status) AS status,
+                        e.title as exam_title,
+                        e.exam_code as exam_id
+                    FROM submission s
+                    INNER JOIN exams e ON s.exam_code = e.id
+                    WHERE s.id = %s AND s.user_id = %s;
+                """,
+                    (submission_id, user_id),
+                )
+
+                submission = cur.fetchone()
+
+                if not submission:
+                    raise ValueError(
+                        f"Submission {submission_id} not found for this user"
+                    )
+
+                # ❗ Block review if not graded
+                if submission["status"] != "graded":
+                    raise ValueError(
+                        "Submission is not graded yet. You cannot review the answers."
+                    )
+
+                exam_id = submission["exam_code"]
+
+                # Calculate total marks
+                cur.execute(
+                    """
+                    SELECT SUM(marks) as total_marks
+                    FROM question
+                    WHERE exam_id = %s;
+                """,
+                    (exam_id,),
+                )
+
+                total_marks_result = cur.fetchone()
+                total_marks = (
+                    total_marks_result["total_marks"] if total_marks_result else 0
+                )
+
+                # Calculate percentage
+                percentage = 0
+                if total_marks and total_marks > 0 and submission["score"] is not None:
+                    percentage = (submission["score"] / total_marks) * 100
+
+                # Get all questions for the exam
+                cur.execute(
+                    """
+                    SELECT 
+                        q.id,
+                        q.question_text,
+                        q.question_type,
+                        q.marks,
+                        q.rubric
+                    FROM question q
+                    WHERE q.exam_id = %s
+                    ORDER BY q.id;
+                """,
+                    (exam_id,),
+                )
+
+                questions = cur.fetchall()
+
+                question_list = []
+                question_number = 1
+
+                for q in questions:
+                    question_data = {
+                        "id": q["id"],
+                        "type": (
+                            "Multiple Choice"
+                            if q["question_type"] == "mcq"
+                            else "Essay Question"
+                        ),
+                        "marks": q["marks"],
+                        "earnedMarks": 0,
+                        "questionNumber": question_number,
+                        "question": q["question_text"],
+                    }
+
+                    # Get submission answer - FIX: Quote table name
+                    cur.execute(
+                        """
+                        SELECT 
+                            sa.id,
+                            sa.score,
+                            sa.feedback,
+                            sa.selected_option_id
+                        FROM "submissionAnswer" sa
+                        WHERE sa.submission_id = %s AND sa.question_id = %s;
+                    """,
+                        (submission_id, q["id"]),
+                    )
+
+                    answer = cur.fetchone()
+
+                    if answer:
+                        question_data["earnedMarks"] = answer["score"] or 0
+
+                    if q["question_type"] == "mcq":
+                        # Get all options
+                        cur.execute(
+                            """
+                            SELECT 
+                                id,
+                                option_text,
+                                is_correct
+                            FROM "questionOption"
+                            WHERE question_id = %s
+                            ORDER BY id;
+                        """,
+                            (q["id"],),
+                        )
+
+                        options = cur.fetchall()
+
+                        option_labels = [
+                            "A",
+                            "B",
+                            "C",
+                            "D",
+                            "E",
+                            "F",
+                            "G",
+                            "H",
+                            "I",
+                            "J",
+                        ]
+                        question_data["options"] = []
+
+                        selected_option_id = (
+                            answer["selected_option_id"] if answer else None
+                        )
+                        selected_label = None
+                        correct_label = None
+
+                        for idx, opt in enumerate(options):
+                            label = (
+                                option_labels[idx]
+                                if idx < len(option_labels)
+                                else str(idx)
+                            )
+                            question_data["options"].append(
+                                {
+                                    "id": label,
+                                    "text": opt["option_text"],
+                                    "isCorrect": opt["is_correct"],
+                                }
+                            )
+
+                            if opt["id"] == selected_option_id:
+                                selected_label = label
+                            if opt["is_correct"]:
+                                correct_label = label
+
+                        question_data["selectedAnswer"] = selected_label
+                        question_data["isCorrect"] = (
+                            (selected_label == correct_label)
+                            if selected_label
+                            else False
+                        )
+
+                    else:  # Essay question
+                        # Get essay answer - FIX: Quote table name
+                        if answer:
+                            cur.execute(
+                                """
+                                SELECT essay_answer
+                                FROM "essayAnswer"
+                                WHERE submission_answer_id = %s;
+                            """,
+                                (answer["id"],),
+                            )
+
+                            essay = cur.fetchone()
+                            question_data["answer"] = (
+                                essay["essay_answer"] if essay else "No answer provided"
+                            )
+                            question_data["feedback"] = answer["feedback"]
+                        else:
+                            question_data["answer"] = "No answer provided"
+                            question_data["feedback"] = None
+
+                    question_list.append(question_data)
+                    question_number += 1
+
+                return {
+                    "submissionId": f"sub{submission['id']}",
+                    "examTitle": submission["exam_title"],
+                    "examId": submission["exam_id"] or f"EXAM-{exam_id}",
+                    "score": (
+                        f"{submission['score']}/{total_marks}"
+                        if submission["score"] is not None
+                        else f"0/{total_marks}"
+                    ),
+                    "percentage": (
+                        f"{percentage:.1f}%"
+                        if submission["score"] is not None
+                        else "0.0%"
+                    ),
+                    "overallFeedback": submission["overall_feedback"],
+                    "questions": question_list,
+                }

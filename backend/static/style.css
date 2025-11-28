@@ -725,13 +725,28 @@ tbody tr:hover {
 }
 
 .submit-badge.submitted {
-    background-color: #dcfce7;
-    color: #16a34a;
+    background: #34d399; /* green */
+    color: white;
 }
 
-.submit-badge.missed {
-    background-color: #fee2e2;
-    color: #dc2626;
+.submit-badge.graded {
+    background: #3b82f6; /* blue */
+    color: white;
+}
+
+.submit-badge.pending {
+    background: #fbbf24; /* yellow */
+    color: black;
+}
+
+.submit-badge.absent {
+    background: #ef4444; /* red */
+    color: white;
+}
+
+.submit-badge.not_submitted {
+    background: #9ca3af; /* gray */
+    color: white;
 }
 
 /* Grade Button */
@@ -2845,7 +2860,7 @@ tbody tr:hover {
 /* Submissions Cards Grid */
 .submissions-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 24px;
 }
 
@@ -3280,6 +3295,59 @@ tbody tr:hover {
     line-height: 1.6;
     margin: 0;
 }
+
+/* Wrapper that controls hover & centers tooltip */
+.review-tooltip-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    margin-top: 8px;
+}
+
+/* Disabled button style */
+.review-disabled-btn {
+    opacity: 0.45;
+    cursor: not-allowed !important;
+    pointer-events: none !important; /* Button cannot be clicked */
+}
+
+/* Tooltip (hidden by default) */
+.review-tooltip-wrapper .tooltip {
+    display: none;                 /* Hidden normally */
+    position: absolute;
+    bottom: -38px;                 /* Position below button */
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e3a8a;
+    color: white;
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 6px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 50;
+    animation: fadeIn 0.25s ease-out;
+}
+
+/* Show tooltip ONLY when hovering the wrapper */
+.review-tooltip-wrapper:hover .tooltip {
+    display: block;
+}
+
+/* Smooth fade animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -6px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+
 
 /* Responsive Design */
 @media (max-width: 1200px) {

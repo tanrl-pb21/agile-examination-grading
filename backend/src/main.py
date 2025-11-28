@@ -37,29 +37,27 @@ def home(request: Request):
 @app.get("/examDetails", response_class=HTMLResponse)
 def exam_details(request: Request, id: int):
     return templates.TemplateResponse(
-        "examDetails.html",
-        {"request": request, "exam_id": id}
+        "examDetails.html", {"request": request, "exam_id": id}
     )
+
+
 # http://127.0.0.1:8000/examDetails?id=1
 @app.get("/examGrading", response_class=HTMLResponse)
 def exam_grading(request: Request, submissionId: int, examId: int):  # Changed to int
     return templates.TemplateResponse(
         "examGrading.html",
-        {
-            "request": request,
-            "submissionId": submissionId,  
-            "examId": examId                
-        }
+        {"request": request, "submissionId": submissionId, "examId": examId},
     )
+
+
 # http://127.0.0.1:8000/examGrading?submissionId=4&examId=42
 
 
 # Student: exam list
 @app.get("/studentExam", response_class=HTMLResponse)
 def student_exam_list(request: Request):
-    return templates.TemplateResponse(
-        "studentExam.html", {"request": request}
-    )
+    return templates.TemplateResponse("studentExam.html", {"request": request})
+
 
 # Student: exam taking
 # @app.get("/studentTakingExam", response_class=HTMLResponse)
@@ -70,8 +68,7 @@ def student_exam_list(request: Request):
 @app.get("/studentTakingExam", response_class=HTMLResponse)
 def student_taking_exam(request: Request, exam_code: str):
     return templates.TemplateResponse(
-        "studentTakingExam.html",
-        {"request": request, "exam_code": exam_code}
+        "studentTakingExam.html", {"request": request, "exam_code": exam_code}
     )
 
 
@@ -85,15 +82,14 @@ def student_submission_list(request: Request):
 
 # Student: submission review
 @app.get("/studentSubmissionReview", response_class=HTMLResponse)
-def student_submission_review(request: Request):
+def student_submission_review(request: Request, id: int, userId: int):
     return templates.TemplateResponse(
-        "studentSubmissionReview.html", {"request": request}
+        "studentSubmissionReview.html",
+        {"request": request, "submissionId": id, "userId": userId},
     )
 
 
 # Teacher: exam management page (same as home but separate URL)
 @app.get("/examManagement", response_class=HTMLResponse)
 def exam_management(request: Request):
-    return templates.TemplateResponse(
-        "examManagement.html", {"request": request}
-    )
+    return templates.TemplateResponse("examManagement.html", {"request": request})

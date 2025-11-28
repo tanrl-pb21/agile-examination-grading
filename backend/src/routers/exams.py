@@ -6,6 +6,7 @@ from datetime import date, datetime, time
 router = APIRouter(prefix="/exams", tags=["Exams"])
 service = ExamService()
 
+
 class ExamCreate(BaseModel):
     title: str
     exam_code: str
@@ -14,30 +15,30 @@ class ExamCreate(BaseModel):
     start_time: str
     end_time: str
     status: str = "scheduled"
-    
-    @field_validator('start_time', 'end_time', mode='before')
+
+    @field_validator("start_time", "end_time", mode="before")
     @classmethod
     def validate_time_format(cls, v):
-        print(f"DEBUG: Received value: {v!r}, type: {type(v)}")  
+        print(f"DEBUG: Received value: {v!r}, type: {type(v)}")
         """Validate time is in HH:MM format"""
         if not v:
             raise ValueError("Time is required")
-        
+
         # Convert to string if needed
         v = str(v).strip()
-        
+
         try:
             datetime.strptime(v, "%H:%M")
         except ValueError:
             raise ValueError(f"Time must be in HH:MM format, got '{v}'")
         return v
 
-    @field_validator('date', mode='before')
+    @field_validator("date", mode="before")
     @classmethod
     def validate_date(cls, v):
         date_obj = None
         formats = ["%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d", "%Y/%m/%d"]
-        
+
         # Handle if it's already a date object
         if isinstance(v, date):
             date_obj = v
@@ -50,20 +51,22 @@ class ExamCreate(BaseModel):
                     break
                 except ValueError:
                     continue
-        
+
         if date_obj is None:
-            raise ValueError("Date must be in DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, or YYYY/MM/DD format")
-        
+            raise ValueError(
+                "Date must be in DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, or YYYY/MM/DD format"
+            )
+
         if date_obj < date.today():
             raise ValueError("Exam date cannot be in the past")
-        
+
         current_year = date.today().year
         if date_obj.year not in (current_year, current_year + 1):
             raise ValueError(f"Exam year must be {current_year} or {current_year + 1}")
-        
+
         return date_obj.strftime("%Y-%m-%d")
-    
-    @model_validator(mode='after')
+
+    @model_validator(mode="after")
     def check_datetime_order_and_past(self):
         """Validate time order and that exam is not in the past"""
         date_str = self.date
@@ -86,17 +89,26 @@ class ExamCreate(BaseModel):
 
         return self
 
+
 def convert_time_to_string(exam_dict):
     """Helper function to convert time objects to strings"""
     if not exam_dict:
         return exam_dict
-    
-    if 'start_time' in exam_dict and exam_dict['start_time'] and not isinstance(exam_dict['start_time'], str):
-        exam_dict['start_time'] = exam_dict['start_time'].strftime('%H:%M')
-    
-    if 'end_time' in exam_dict and exam_dict['end_time'] and not isinstance(exam_dict['end_time'], str):
-        exam_dict['end_time'] = exam_dict['end_time'].strftime('%H:%M')
-    
+
+    if (
+        "start_time" in exam_dict
+        and exam_dict["start_time"]
+        and not isinstance(exam_dict["start_time"], str)
+    ):
+        exam_dict["start_time"] = exam_dict["start_time"].strftime("%H:%M")
+
+    if (
+        "end_time" in exam_dict
+        and exam_dict["end_time"]
+        and not isinstance(exam_dict["end_time"], str)
+    ):
+        exam_dict["end_time"] = exam_dict["end_time"].strftime("%H:%M")
+
     return exam_dict
 
 
@@ -107,19 +119,20 @@ def get_all_exams():
     try:
         print("📋 GET /exams - Fetching all exams...")
         exams = service.get_all_exams()
-        
+
         if not exams:
             print("✅ No exams found, returning empty list")
             return []
-        
+
         # Convert time objects to strings for all exams
         converted_exams = [convert_time_to_string(exam) for exam in exams]
         print(f"✅ Returning {len(converted_exams)} exams")
         return converted_exams
-        
+
     except Exception as e:
         print(f"❌ ERROR in get_all_exams: {str(e)}")
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
@@ -165,7 +178,7 @@ def add_exam(exam: ExamCreate):
             date=exam.date,
             start_time=exam.start_time,
             end_time=exam.end_time,
-            status=exam.status
+            status=exam.status,
         )
         return convert_time_to_string(result)
     except ValueError as e:
@@ -183,7 +196,7 @@ def update_exam(exam_id: int, exam: ExamCreate):
             date=exam.date,
             start_time=exam.start_time,
             end_time=exam.end_time,
-            status=exam.status
+            status=exam.status,
         )
         if not result:
             raise HTTPException(status_code=404, detail="Exam not found")
@@ -208,15 +221,15 @@ def get_exam_duration_by_code(exam_code: str):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+
 @router.get("/code/{exam_code}/questions")
 def get_questions_by_exam_code(exam_code: str):
-    exam_code = exam_code.strip()   # prevent whitespace issues
+    exam_code = exam_code.strip()  # prevent whitespace issues
 
     try:
         return service.get_questions_by_exam_code(exam_code)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
 
 
 from typing import List, Dict, Any, Union
@@ -226,9 +239,11 @@ from pydantic import BaseModel
 # REQUEST MODELS
 # ===========================
 
+
 class AnswerSubmit(BaseModel):
     question_id: int
     answer: Union[int, str]  # int for MCQ (option_id), str for Essay (text)
+
 
 class ExamSubmission(BaseModel):
     exam_code: str
@@ -240,6 +255,7 @@ class ExamSubmission(BaseModel):
 # SUBMISSION ENDPOINT
 # ===========================
 
+
 @router.post("/submit")
 def submit_exam(submission: ExamSubmission):
     """
@@ -247,11 +263,13 @@ def submit_exam(submission: ExamSubmission):
     - MCQ questions are auto-graded
     - Essay questions are marked as pending for teacher review
     """
+    # service.validate_submission_time(submission.exam_code)
+
     try:
         result = service.submit_exam(
             exam_code=submission.exam_code,
             user_id=submission.user_id,
-            answers=submission.answers
+            answers=submission.answers,
         )
         return result
     except ValueError as e:
