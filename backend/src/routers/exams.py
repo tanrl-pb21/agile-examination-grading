@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from src.services.exams_service import ExamService
-from pydantic import BaseModel, field_validator,model_validator
+from pydantic import BaseModel, field_validator, model_validator
 from datetime import date, datetime, time
 
 router = APIRouter(prefix="/exams", tags=["Exams"])
 service = ExamService()
+
 
 class ExamCreate(BaseModel):
     title: str
@@ -14,12 +15,12 @@ class ExamCreate(BaseModel):
     end_time: str
     status: str = "scheduled"
 
-    @field_validator('date')
+    @field_validator("date")
     @classmethod
     def validate_date(cls, v):
         date_obj = None
         formats = ["%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d", "%Y/%m/%d"]
-        
+
         # Try multiple date formats
         for fmt in formats:
             try:
@@ -27,24 +28,25 @@ class ExamCreate(BaseModel):
                 break
             except ValueError:
                 continue
-        
+
         # If no format matched, raise error
         if date_obj is None:
-            raise ValueError("Date must be in DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, or YYYY/MM/DD format")
-        
-        
+            raise ValueError(
+                "Date must be in DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, or YYYY/MM/DD format"
+            )
+
         # Check if date is in the past
         if date_obj < date.today():
             raise ValueError("Exam date cannot be in the past")
-        
+
         current_year = date.today().year
         if date_obj.year not in (current_year, current_year + 1):
             raise ValueError(f"Exam year must be {current_year} or {current_year + 1}")
-        
+
         # Return the standardized date string (YYYY-MM-DD) for storage
         return date_obj.strftime("%Y-%m-%d")
 
-    @field_validator('start_time', 'end_time')
+    @field_validator("start_time", "end_time")
     @classmethod
     def validate_time(cls, v):
         try:
@@ -52,12 +54,12 @@ class ExamCreate(BaseModel):
         except ValueError:
             raise ValueError("Time must be in HH:MM format")
         return v
-    
-    @model_validator(mode='before')
+
+    @model_validator(mode="before")
     def check_datetime_order_and_past(cls, values):
-        date_str = values.get('date')
-        start_str = values.get('start_time')
-        end_str = values.get('end_time')
+        date_str = values.get("date")
+        start_str = values.get("start_time")
+        end_str = values.get("end_time")
 
         if not date_str or not start_str or not end_str:
             return values  # skip if any missing; field validators handle missing values
@@ -89,7 +91,7 @@ def add_exam(exam: ExamCreate):
             date=exam.date,
             start_time=exam.start_time,
             end_time=exam.end_time,
-            status=exam.status
+            status=exam.status,
         )
         return result
     except ValueError as e:
@@ -106,13 +108,14 @@ def update_exam(exam_id: int, exam: ExamCreate):
             date=exam.date,
             start_time=exam.start_time,
             end_time=exam.end_time,
-            status=exam.status
+            status=exam.status,
         )
         if not result:
             raise HTTPException(status_code=404, detail="Exam not found")
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.get("/{exam_id}")
 def get_exam(exam_id: int):

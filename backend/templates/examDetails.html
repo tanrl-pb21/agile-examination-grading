@@ -332,371 +332,445 @@
     </div>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const examId = urlParams.get('id');
+    const urlParams = new URLSearchParams(window.location.search);
+    const examId = urlParams.get('id');
+    
+    let currentExam = null;
+    let currentFilter = 'all';
+    let selectedCorrectAnswer = 0;
+    let mcqOptionsCount = 4;
+
+    // Validation helper functions
+    function showError(fieldId, message) {
+        const errorElement = document.getElementById(fieldId + 'Error');
+        const inputElement = document.getElementById(fieldId);
         
-        let currentExam = null;
-        let currentFilter = 'all';
-        let selectedCorrectAnswer = 0;
-        let mcqOptionsCount = 4;
+        if (errorElement) {
+            errorElement.textContent = message || errorElement.textContent;
+            errorElement.classList.add('show');
+        }
+        if (inputElement) {
+            inputElement.classList.add('error');
+        }
+    }
 
-        // Validation helper functions
-        function showError(fieldId, message) {
-            const errorElement = document.getElementById(fieldId + 'Error');
-            const inputElement = document.getElementById(fieldId);
-            
-            if (errorElement) {
-                errorElement.textContent = message || errorElement.textContent;
-                errorElement.classList.add('show');
-            }
-            if (inputElement) {
-                inputElement.classList.add('error');
-            }
+    function clearError(fieldId) {
+        const errorElement = document.getElementById(fieldId + 'Error');
+        const inputElement = document.getElementById(fieldId);
+        
+        if (errorElement) {
+            errorElement.classList.remove('show');
+        }
+        if (inputElement) {
+            inputElement.classList.remove('error');
+        }
+        
+        document.querySelectorAll('.option-input-row input').forEach(input => {
+            input.classList.remove('error');
+        });
+    }
+
+    function clearAllErrors() {
+        document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
+        document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+    }
+
+    function validateMCQForm() {
+        clearAllErrors();
+        let isValid = true;
+
+        const question = document.getElementById('mcqQuestion').value.trim();
+        if (!question) {
+            showError('mcqQuestion', 'Question text is required');
+            isValid = false;
         }
 
-        function clearError(fieldId) {
-            const errorElement = document.getElementById(fieldId + 'Error');
-            const inputElement = document.getElementById(fieldId);
-            
-            if (errorElement) {
-                errorElement.classList.remove('show');
-            }
-            if (inputElement) {
-                inputElement.classList.remove('error');
-            }
-            
-            // Clear errors from option inputs
-            document.querySelectorAll('.option-input-row input').forEach(input => {
-                input.classList.remove('error');
-            });
-        }
-
-        function clearAllErrors() {
-            document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
-            document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
-        }
-
-        function validateMCQForm() {
-            clearAllErrors();
-            let isValid = true;
-
-            // Validate question text
-            const question = document.getElementById('mcqQuestion').value.trim();
-            if (!question) {
-                showError('mcqQuestion', 'Question text is required');
-                isValid = false;
-            }
-
-            // Validate options
-            const options = [];
-            let hasEmptyOption = false;
-            
-            for (let i = 0; i < mcqOptionsCount; i++) {
-                const optionInput = document.getElementById(`mcqOption${i + 1}`);
-                if (optionInput) {
-                    const optionValue = optionInput.value.trim();
-                    if (!optionValue) {
-                        hasEmptyOption = true;
-                        optionInput.classList.add('error');
-                    } else {
-                        options.push(optionValue);
-                    }
-                }
-            }
-
-            // Check minimum options
-            if (mcqOptionsCount < 2) {
-                showError('mcqOptions', 'At least 2 options are required');
-                isValid = false;
-            } else if (hasEmptyOption) {
-                showError('mcqOptions', 'All option fields must be filled');
-                isValid = false;
-            }
-
-            // Validate points
-            const points = parseInt(document.getElementById('mcqPoints').value);
-            if (!points || points <= 0) {
-                showError('mcqPoints', 'Points must be a positive number greater than 0');
-                isValid = false;
-            }
-
-            return isValid;
-        }
-
-        function validateEssayForm() {
-            clearAllErrors();
-            let isValid = true;
-
-            // Validate question text
-            const question = document.getElementById('essayQuestion').value.trim();
-            if (!question) {
-                showError('essayQuestion', 'Question text is required');
-                isValid = false;
-            }
-
-            // Validate points
-            const points = parseInt(document.getElementById('essayPoints').value);
-            if (!points || points <= 0) {
-                showError('essayPoints', 'Points must be a positive number greater than 0');
-                isValid = false;
-            }
-
-            // Validate rubric
-            const rubric = document.getElementById('essayRubric').value.trim();
-            if (!rubric) {
-                showError('essayRubric', 'Grading rubric is required');
-                isValid = false;
-            }
-
-            return isValid;
-        }
-
-        function showSuccessMessage(message) {
-            const successDiv = document.createElement('div');
-            successDiv.className = 'success-message';
-            successDiv.textContent = message;
-            document.body.appendChild(successDiv);
-
-            setTimeout(() => {
-                successDiv.style.animation = 'slideIn 0.3s ease-out reverse';
-                setTimeout(() => successDiv.remove(), 300);
-            }, 3000);
-        }
-
-        async function loadExamData() {
-            try {
-                console.log('Fetching exam with ID:', examId);
-                
-                // Verify exam ID exists
-                const examResponse = await axios.get(`/exams/${examId}`);
-                const exam = examResponse.data;
-                
-                if (!exam) {
-                    throw new Error('Exam ID does not exist');
-                }
-                
-                const questionsResponse = await axios.get(`/questions/exam/${examId}`);
-                const questions = questionsResponse.data;
-                
-                console.log('Exam data:', exam);
-                console.log('Questions data:', questions);
-                
-                currentExam = transformExamData(exam);
-                currentExam.questions = transformQuestions(questions);
-                
-                renderExamInfo();
-                renderQuestionStats();
-                renderQuestions();
-                renderSubmissionStats();
-                renderFilterTabs();
-                renderSubmissions();
-                
-            } catch (error) {
-                console.error('Error loading exam:', error);
-                if (error.response?.status === 404) {
-                    alert('Error: The exam ID does not exist. Please check the exam ID and try again.');
+        const options = [];
+        let hasEmptyOption = false;
+        
+        for (let i = 0; i < mcqOptionsCount; i++) {
+            const optionInput = document.getElementById(`mcqOption${i + 1}`);
+            if (optionInput) {
+                const optionValue = optionInput.value.trim();
+                if (!optionValue) {
+                    hasEmptyOption = true;
+                    optionInput.classList.add('error');
                 } else {
-                    alert('Failed to load exam details: ' + (error.response?.data?.detail || error.message));
+                    options.push(optionValue);
                 }
-                window.location.href = '/examManagement';
             }
         }
 
-        function transformExamData(exam) {
-            const examDate = exam.date;
-            const startTimeStr = exam.start_time;
-            const endTimeStr = exam.end_time;
+        if (mcqOptionsCount < 2) {
+            showError('mcqOptions', 'At least 2 options are required');
+            isValid = false;
+        } else if (hasEmptyOption) {
+            showError('mcqOptions', 'All option fields must be filled');
+            isValid = false;
+        }
+
+        const points = parseInt(document.getElementById('mcqPoints').value);
+        if (!points || points <= 0) {
+            showError('mcqPoints', 'Points must be a positive number greater than 0');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    function validateEssayForm() {
+        clearAllErrors();
+        let isValid = true;
+
+        const question = document.getElementById('essayQuestion').value.trim();
+        if (!question) {
+            showError('essayQuestion', 'Question text is required');
+            isValid = false;
+        }
+
+        const points = parseInt(document.getElementById('essayPoints').value);
+        if (!points || points <= 0) {
+            showError('essayPoints', 'Points must be a positive number greater than 0');
+            isValid = false;
+        }
+
+        const rubric = document.getElementById('essayRubric').value.trim();
+        if (!rubric) {
+            showError('essayRubric', 'Grading rubric is required');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    function showSuccessMessage(message) {
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message';
+        successDiv.textContent = message;
+        document.body.appendChild(successDiv);
+
+        setTimeout(() => {
+            successDiv.style.animation = 'slideIn 0.3s ease-out reverse';
+            setTimeout(() => successDiv.remove(), 300);
+        }, 3000);
+    }
+
+async function loadExamData() {
+        try {
+            console.log('Fetching exam with ID:', examId);
             
-            const startTime = startTimeStr.slice(0, 5);
-            const endTime = endTimeStr.slice(0, 5);
+            // Validate exam ID format (must be a positive integer)
+            const examIdNum = parseInt(examId);
+            if (isNaN(examIdNum) || examIdNum <= 0) {
+                throw new Error('Invalid exam ID format');
+            }
+            
+            const examResponse = await axios.get(`/exams/${examId}`);
+            const exam = examResponse.data;
+            
+            if (!exam) {
+                throw new Error('Exam ID does not exist');
+            }
+            
+            const questionsResponse = await axios.get(`/questions/exam/${examId}`);
+            const questions = questionsResponse.data;
+            
+            // Fetch submissions
+            const submissionsResponse = await axios.get(`/submissions/exam/${examId}`);
+            const submissions = submissionsResponse.data;
+            
+            // Fetch submission summary
+            const summaryResponse = await axios.get(`/submissions/exam/${examId}/summary`);
+            const summary = summaryResponse.data;
+            
+            console.log('Exam data:', exam);
+            console.log('Questions data:', questions);
+            console.log('Submissions data:', submissions);
+            console.log('Summary data:', summary);
+            
+            currentExam = transformExamData(exam);
+            currentExam.questions = transformQuestions(questions);
+            currentExam.submissions = transformSubmissions(submissions);
+            currentExam.totalStudents = summary.total_students;
+            currentExam.submitted = summary.submitted;
+            currentExam.missed = summary.missed;
+            
+            renderExamInfo();
+            renderQuestionStats();
+            renderQuestions();
+            renderSubmissionStats();
+            renderFilterTabs();
+            renderSubmissions();
+            
+        } catch (error) {
+            console.error('Error loading exam:', error);
+            
+            // Show appropriate error message
+            let errorMessage = 'Failed to load exam details.';
+            
+            if (error.response?.status === 404) {
+                errorMessage = 'Error: The exam ID does not exist. Redirecting to exam management...';
+            } else if (error.message === 'Invalid exam ID format') {
+                errorMessage = 'Error: Invalid exam ID format. Redirecting to exam management...';
+            } else if (error.response?.data?.detail) {
+                errorMessage = `Error: ${error.response.data.detail}. Redirecting to exam management...`;
+            }
+            
+            alert(errorMessage);
+            
+            // Redirect after a short delay
+            setTimeout(() => {
+                window.location.href = '/examManagement';
+            }, 100);
+        }
+    }
+
+    function transformExamData(exam) {
+        const examDate = exam.date;
+        const startTimeStr = exam.start_time;
+        const endTimeStr = exam.end_time;
+        
+        const startTime = startTimeStr.slice(0, 5);
+        const endTime = endTimeStr.slice(0, 5);
+        
+        return {
+            id: exam.id,
+            examId: exam.exam_code || `EXAM${exam.id}`,
+            title: exam.title,
+            date: examDate,
+            startTime: startTime,
+            endTime: endTime,
+            duration: exam.duration + ' min',
+            status: exam.status || 'scheduled',
+            totalStudents: 0,
+            submitted: 0,
+            missed: 0,
+            questions: [],
+            submissions: []
+        };
+    }
+
+    function transformQuestions(questions) {
+        return questions.map(q => {
+            if (q.question_type === 'mcq') {
+                return {
+                    id: q.id,
+                    type: 'mcq',
+                    question: q.question_text,
+                    points: q.marks,
+                    options: q.options.map(opt => opt.option_text),
+                    correctAnswer: q.options.findIndex(opt => opt.is_correct)
+                };
+            } else {
+                return {
+                    id: q.id,
+                    type: 'essay',
+                    question: q.question_text,
+                    points: q.marks,
+                    rubric: q.rubric,
+                    referenceAnswer: q.reference_answer
+                };
+            }
+        });
+    }
+
+    function transformSubmissions(submissions) {
+        return submissions.map(sub => {
+            const email = sub.user_email || '';
+            const namePart = email.split('@')[0];
+            const initials = namePart.substring(0, 2).toUpperCase();
+            
+            const avatarColors = ['bg-blue', 'bg-purple', 'bg-green', 'bg-orange', 'bg-pink'];
+            const colorIndex = sub.user_id % avatarColors.length;
+            
+            let statusDisplay = sub.status;
+            if (sub.status === 'not_submitted') {
+                statusDisplay = 'pending';
+            }
             
             return {
-                id: exam.id,
-                examId: exam.exam_code || `EXAM${exam.id}`,
-                title: exam.title,
-                date: examDate,
-                startTime: startTime,
-                endTime: endTime,
-                duration: exam.duration + ' min',
-                status: exam.status || 'scheduled',
-                totalStudents: 0,
-                submitted: 0,
-                missed: 0,
-                questions: [],
-                submissions: []
+                id: sub.submission_id,
+                studentId: `STU${sub.user_id}`,
+                studentName: namePart.charAt(0).toUpperCase() + namePart.slice(1),
+                studentEmail: email,
+                avatar: initials,
+                avatarColor: avatarColors[colorIndex],
+                status: statusDisplay,
+                submissionDate: sub.submission_date || null,
+                score: sub.score,
+                percentage: sub.score_grade || (sub.score ? `${sub.score}%` : null)
             };
-        }
+        });
+    }
 
-        function transformQuestions(questions) {
-            return questions.map(q => {
-                if (q.question_type === 'mcq') {
-                    return {
-                        id: q.id,
-                        type: 'mcq',
-                        question: q.question_text,
-                        points: q.marks,
-                        options: q.options.map(opt => opt.option_text),
-                        correctAnswer: q.options.findIndex(opt => opt.is_correct)
-                    };
-                } else {
-                    return {
-                        id: q.id,
-                        type: 'essay',
-                        question: q.question_text,
-                        points: q.marks,
-                        rubric: q.rubric,
-                        referenceAnswer: q.reference_answer
-                    };
-                }
-            });
+    function init() {
+        if (!examId) {
+            alert('Error: No exam ID provided. Please select a valid exam.');
+            window.location.href = '/examManagement';
+            return;
         }
+        loadExamData();
+    }
 
-        function init() {
-            if (!examId) {
-                alert('Error: No exam ID provided. Please select a valid exam.');
-                window.location.href = '/examManagement';
-                return;
-            }
-            loadExamData();
-        }
+    function renderExamInfo() {
+        if (!currentExam) return;
+        document.getElementById('examTitle').textContent = currentExam.title;
+        document.getElementById('examStatusBadge').textContent = currentExam.status.charAt(0).toUpperCase() + currentExam.status.slice(1);
+        document.getElementById('examStatusBadge').className = `status-badge status-${currentExam.status}`;
+        document.getElementById('examInfoCards').innerHTML = `
+            <div class="info-card"><span class="info-label">Exam ID</span><span class="info-value">${currentExam.examId}</span></div>
+            <div class="info-card"><span class="info-label">Date</span><span class="info-value">${currentExam.date}</span></div>
+            <div class="info-card"><span class="info-label">Time</span><span class="info-value">${currentExam.startTime} - ${currentExam.endTime}</span></div>
+            <div class="info-card"><span class="info-label">Duration</span><span class="info-value">${currentExam.duration}</span></div>
+        `;
+    }
 
-        function renderExamInfo() {
-            if (!currentExam) return;
-            document.getElementById('examTitle').textContent = currentExam.title;
-            document.getElementById('examStatusBadge').textContent = currentExam.status.charAt(0).toUpperCase() + currentExam.status.slice(1);
-            document.getElementById('examStatusBadge').className = `status-badge status-${currentExam.status}`;
-            document.getElementById('examInfoCards').innerHTML = `
-                <div class="info-card"><span class="info-label">Exam ID</span><span class="info-value">${currentExam.examId}</span></div>
-                <div class="info-card"><span class="info-label">Date</span><span class="info-value">${currentExam.date}</span></div>
-                <div class="info-card"><span class="info-label">Time</span><span class="info-value">${currentExam.startTime} - ${currentExam.endTime}</span></div>
-                <div class="info-card"><span class="info-label">Duration</span><span class="info-value">${currentExam.duration}</span></div>
-            `;
-        }
-
-        function renderQuestionStats() {
-            if (!currentExam) return;
-            const mcqCount = currentExam.questions.filter(q => q.type === 'mcq').length;
-            const essayCount = currentExam.questions.filter(q => q.type === 'essay').length;
-            const totalPoints = currentExam.questions.reduce((sum, q) => sum + q.points, 0);
-            document.getElementById('questionStats').innerHTML = `
-                <div class="stat-item"><span class="stat-dot blue"></span><span>MCQ Questions: <strong>${mcqCount}</strong></span></div>
-                <div class="stat-item"><span class="stat-dot purple"></span><span>Essay Questions: <strong>${essayCount}</strong></span></div>
-                <div class="stat-item"><svg viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Total Points: <strong>${totalPoints}</strong></span></div>
-                <div class="add-question-dropdown">
-                    <button class="btn-add-question" onclick="toggleDropdown(event)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Add Question
-                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                    <div class="dropdown-menu" id="dropdownMenu">
-                        <a href="#" class="dropdown-item" onclick="openMCQModal(event)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
-                            <div><span class="dropdown-title">Add MCQ</span><span class="dropdown-desc">Multiple choice question</span></div>
-                        </a>
-                        <a href="#" class="dropdown-item" onclick="openEssayModal(event)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            <div><span class="dropdown-title">Add Essay</span><span class="dropdown-desc">Essay question</span></div>
-                        </a>
-                    </div>
+    function renderQuestionStats() {
+        if (!currentExam) return;
+        const mcqCount = currentExam.questions.filter(q => q.type === 'mcq').length;
+        const essayCount = currentExam.questions.filter(q => q.type === 'essay').length;
+        const totalPoints = currentExam.questions.reduce((sum, q) => sum + q.points, 0);
+        document.getElementById('questionStats').innerHTML = `
+            <div class="stat-item"><span class="stat-dot blue"></span><span>MCQ Questions: <strong>${mcqCount}</strong></span></div>
+            <div class="stat-item"><span class="stat-dot purple"></span><span>Essay Questions: <strong>${essayCount}</strong></span></div>
+            <div class="stat-item"><svg viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Total Points: <strong>${totalPoints}</strong></span></div>
+            <div class="add-question-dropdown">
+                <button class="btn-add-question" onclick="toggleDropdown(event)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Question
+                    <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <a href="#" class="dropdown-item" onclick="openMCQModal(event)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                        <div><span class="dropdown-title">Add MCQ</span><span class="dropdown-desc">Multiple choice question</span></div>
+                    </a>
+                    <a href="#" class="dropdown-item" onclick="openEssayModal(event)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <div><span class="dropdown-title">Add Essay</span><span class="dropdown-desc">Essay question</span></div>
+                    </a>
                 </div>
-            `;
-        }
+            </div>
+        `;
+    }
 
-        function renderQuestions() {
-            if (!currentExam) return;
-            const container = document.getElementById('questionsList');
+    function renderQuestions() {
+        if (!currentExam) return;
+        const container = document.getElementById('questionsList');
+        
+        const isCompleted = currentExam.status === 'completed';
+        
+        if (currentExam.questions.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;">No questions added yet</div>';
+            return;
+        }
+        
+        container.innerHTML = currentExam.questions.map((q, index) => {
+            const editButton = isCompleted 
+                ? '' 
+                : `<button class="action-btn edit" onclick="editQuestion(${q.id}, '${q.type}')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`;
             
-            const isCompleted = currentExam.status === 'completed';
-            
-            if (currentExam.questions.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;">No questions added yet</div>';
-                return;
+            if (q.type === 'mcq') {
+                return `<div class="question-card">
+                    <div class="question-header">
+                        <div class="question-number">${index + 1}</div>
+                        <span class="question-type mcq">MCQ</span>
+                        <span class="question-points">${q.points} points</span>
+                        <div class="question-actions">
+                            ${editButton}
+                            <button class="action-btn delete" onclick="deleteQuestion(${q.id})" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        </div>
+                    </div>
+                    <div class="question-content">
+                        <p class="question-text">${q.question}</p>
+                        <div class="options-list">
+                            ${q.options.map((opt, i) => `<div class="option ${i === q.correctAnswer ? 'correct' : ''}"><span class="option-radio ${i === q.correctAnswer ? 'checked' : ''}">${i === q.correctAnswer ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span><span>${opt}</span></div>`).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            } else {
+                return `<div class="question-card">
+                    <div class="question-header">
+                        <div class="question-number">${index + 1}</div>
+                        <span class="question-type essay">Essay</span>
+                        <span class="question-points">${q.points} points</span>
+                        <div class="question-actions">
+                            ${editButton}
+                            <button class="action-btn delete" onclick="deleteQuestion(${q.id})" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        </div>
+                    </div>
+                    <div class="question-content">
+                        <p class="question-text">${q.question}</p>
+                        ${q.rubric ? `<div class="rubric-box"><div class="rubric-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Rubric</span></div><p class="rubric-text">${q.rubric}</p></div>` : ''}
+                    </div>
+                </div>`;
             }
+        }).join('');
+    }
+
+    function renderSubmissionStats() {
+        if (!currentExam) return;
+        document.getElementById('submissionStats').innerHTML = `
+            <div class="stat-card blue"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="stat-content"><span class="stat-number">${currentExam.totalStudents}</span><span class="stat-label">Total Students</span></div></div>
+            <div class="stat-card green"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="stat-content"><span class="stat-number">${currentExam.submitted}</span><span class="stat-label">Submitted</span></div></div>
+            <div class="stat-card red"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="stat-content"><span class="stat-number">${currentExam.missed}</span><span class="stat-label">Not Submitted</span></div></div>
+        `;
+    }
+
+    function renderFilterTabs() {
+        if (!currentExam) return;
+        const submitted = currentExam.submissions.filter(s => s.status === 'submitted').length;
+        const pending = currentExam.submissions.filter(s => s.status === 'pending').length;
+        const absent = currentExam.submissions.filter(s => s.status === 'absent').length;
+        
+        document.getElementById('filterTabs').innerHTML = `
+            <button class="filter-tab ${currentFilter === 'all' ? 'active' : ''}" onclick="setFilter('all')">All (${currentExam.submissions.length})</button>
+            <button class="filter-tab ${currentFilter === 'submitted' ? 'active' : ''}" onclick="setFilter('submitted')">Submitted (${submitted})</button>
+            <button class="filter-tab ${currentFilter === 'pending' ? 'active' : ''}" onclick="setFilter('pending')">Pending (${pending})</button>
+            <button class="filter-tab ${currentFilter === 'absent' ? 'active' : ''}" onclick="setFilter('absent')">Absent (${absent})</button>
+        `;
+    }
+
+    function renderSubmissions() {
+        if (!currentExam) return;
+        const search = document.getElementById('submissionSearch')?.value.toLowerCase() || '';
+        let filtered = currentExam.submissions;
+        
+        if (currentFilter !== 'all') {
+            filtered = filtered.filter(s => s.status === currentFilter);
+        }
+        
+        if (search) {
+            filtered = filtered.filter(s => 
+                s.studentName.toLowerCase().includes(search) || 
+                s.studentId.toLowerCase().includes(search) || 
+                s.studentEmail.toLowerCase().includes(search)
+            );
+        }
+        
+        const tbody = document.getElementById('submissionsTableBody');
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#6c757d;">No submissions found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = filtered.map(s => {
+            // Use lowercase status for CSS class (submitted, pending, absent)
+            let statusBadgeClass = s.status;
             
-            container.innerHTML = currentExam.questions.map((q, index) => {
-                const editButton = isCompleted 
-                    ? '' 
-                    : `<button class="action-btn edit" onclick="editQuestion(${q.id}, '${q.type}')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`;
-                
-                if (q.type === 'mcq') {
-                    return `<div class="question-card">
-                        <div class="question-header">
-                            <div class="question-number">${index + 1}</div>
-                            <span class="question-type mcq">MCQ</span>
-                            <span class="question-points">${q.points} points</span>
-                            <div class="question-actions">
-                                ${editButton}
-                                <button class="action-btn delete" onclick="deleteQuestion(${q.id})" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                            </div>
-                        </div>
-                        <div class="question-content">
-                            <p class="question-text">${q.question}</p>
-                            <div class="options-list">
-                                ${q.options.map((opt, i) => `<div class="option ${i === q.correctAnswer ? 'correct' : ''}"><span class="option-radio ${i === q.correctAnswer ? 'checked' : ''}">${i === q.correctAnswer ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span><span>${opt}</span></div>`).join('')}
-                            </div>
-                        </div>
-                    </div>`;
-                } else {
-                    return `<div class="question-card">
-                        <div class="question-header">
-                            <div class="question-number">${index + 1}</div>
-                            <span class="question-type essay">Essay</span>
-                            <span class="question-points">${q.points} points</span>
-                            <div class="question-actions">
-                                ${editButton}
-                                <button class="action-btn delete" onclick="deleteQuestion(${q.id})" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                            </div>
-                        </div>
-                        <div class="question-content">
-                            <p class="question-text">${q.question}</p>
-                            ${q.rubric ? `<div class="rubric-box"><div class="rubric-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Rubric</span></div><p class="rubric-text">${q.rubric}</p></div>` : ''}
-                        </div>
-                    </div>`;
-                }
-            }).join('');
-        }
-
-        function renderSubmissionStats() {
-            if (!currentExam) return;
-            document.getElementById('submissionStats').innerHTML = `
-                <div class="stat-card blue"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="stat-content"><span class="stat-number">${currentExam.totalStudents}</span><span class="stat-label">Total Students</span></div></div>
-                <div class="stat-card green"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="stat-content"><span class="stat-number">${currentExam.submitted}</span><span class="stat-label">Submitted</span></div></div>
-                <div class="stat-card red"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="stat-content"><span class="stat-number">${currentExam.missed}</span><span class="stat-label">Missed</span></div></div>
-            `;
-        }
-
-        function renderFilterTabs() {
-            if (!currentExam) return;
-            const submitted = currentExam.submissions.filter(s => s.status === 'submitted').length;
-            const missed = currentExam.submissions.filter(s => s.status === 'missed').length;
-            document.getElementById('filterTabs').innerHTML = `
-                <button class="filter-tab ${currentFilter === 'all' ? 'active' : ''}" onclick="setFilter('all')">All (${currentExam.submissions.length})</button>
-                <button class="filter-tab ${currentFilter === 'submitted' ? 'active' : ''}" onclick="setFilter('submitted')">Submitted (${submitted})</button>
-                <button class="filter-tab ${currentFilter === 'missed' ? 'active' : ''}" onclick="setFilter('missed')">Missed (${missed})</button>
-            `;
-        }
-
-        function renderSubmissions() {
-            if (!currentExam) return;
-            const search = document.getElementById('submissionSearch')?.value.toLowerCase() || '';
-            let filtered = currentExam.submissions;
-            if (currentFilter !== 'all') filtered = filtered.filter(s => s.status === currentFilter);
-            if (search) filtered = filtered.filter(s => s.studentName.toLowerCase().includes(search) || s.studentId.toLowerCase().includes(search) || s.studentEmail.toLowerCase().includes(search));
-            const tbody = document.getElementById('submissionsTableBody');
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#6c757d;">No submissions found</td></tr>';
-                return;
-            }
-            tbody.innerHTML = filtered.map(s => `
+            // Format display text - Capitalize properly
+            let statusText = formatStatusText(s.status);
+            
+            return `
                 <tr>
                     <td>${s.studentId}</td>
                     <td><div class="student-info"><div class="student-avatar ${s.avatarColor}">${s.avatar}</div><div class="student-details"><span class="student-name">${s.studentName}</span><span class="student-email">${s.studentEmail}</span></div></div></td>
-                    <td><span class="submit-badge ${s.status}">${s.status.charAt(0).toUpperCase() + s.status.slice(1)}</span></td>
+                    <td><span class="submit-badge ${statusBadgeClass}">${statusText}</span></td>
                     <td>${s.submissionDate || '-'}</td>
-                    <td>${s.score ? `${s.score} (${s.percentage})` : '-'}</td>
+                    <td>${s.score ? `${s.score}` : '-'}</td>
                     <td>
-                        ${s.status === 'submitted'
-                            ? `<button class="btn-grade" onclick="goToGrading('${s.studentId}', ${currentExam.id})">
+                        ${(s.status === 'submitted' || s.status === 'graded') && s.id
+                            ? `<button class="btn-grade" onclick="goToGrading(${s.id}, ${currentExam.id})">
                                     <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'>
                                         <circle cx='12' cy='12' r='10'/>
                                     </svg>
@@ -705,305 +779,311 @@
                             : '-'}
                     </td>
                 </tr>
-            `).join('');
-        }
+            `;
+        }).join('');
+    }
 
-        function switchTab(tabId, btn) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            btn.classList.add('active');
-            document.getElementById(tabId).classList.add('active');
-        }
+    // Add this helper function for formatting status text
+    function formatStatusText(status) {
+        const statusMap = {
+            'submitted': 'Submitted',
+            'pending': 'Pending',
+            'absent': 'Absent',
+            'not_submitted': 'Not Submitted'
+        };
+        
+        return statusMap[status] || status.charAt(0).toUpperCase() + status.slice(1);
+    }
 
-        function setFilter(filter) {
-            currentFilter = filter;
-            renderFilterTabs();
-            renderSubmissions();
-        }
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    }
 
-        function filterSubmissions() {
-            renderSubmissions();
-        }
+    function setFilter(filter) {
+        currentFilter = filter;
+        renderFilterTabs();
+        renderSubmissions();
+    }
 
-        function toggleDropdown(e) {
-            e.stopPropagation();
-            const menu = document.getElementById('dropdownMenu');
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        }
+    function filterSubmissions() {
+        renderSubmissions();
+    }
 
-        document.addEventListener('click', () => {
-            const menu = document.getElementById('dropdownMenu');
-            if (menu) menu.style.display = 'none';
+    function toggleDropdown(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('dropdownMenu');
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('dropdownMenu');
+        if (menu) menu.style.display = 'none';
+    });
+
+    function selectCorrectAnswer(index) {
+        selectedCorrectAnswer = index;
+        document.querySelectorAll('.option-select-btn').forEach((btn, i) => {
+            btn.classList.toggle('selected', i === index);
+            btn.innerHTML = i === index ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
         });
+    }
 
-        function selectCorrectAnswer(index) {
-            selectedCorrectAnswer = index;
-            document.querySelectorAll('.option-select-btn').forEach((btn, i) => {
-                btn.classList.toggle('selected', i === index);
-                btn.innerHTML = i === index ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
-            });
+    function renderMCQOptions(count, editData = null) {
+        const container = document.getElementById('mcqOptionsList');
+        container.innerHTML = '';
+        
+        for (let i = 0; i < count; i++) {
+            const isSelected = editData ? (i === editData.correctAnswer) : (i === selectedCorrectAnswer);
+            const optionValue = editData && editData.options[i] ? editData.options[i] : '';
+            
+            const row = document.createElement('div');
+            row.className = 'option-input-row';
+            row.innerHTML = `
+                <button type="button" class="option-select-btn ${isSelected ? 'selected' : ''}" data-option="${i}" onclick="selectCorrectAnswer(${i})">
+                    ${isSelected ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                </button>
+                <input type="text" id="mcqOption${i + 1}" placeholder="Option ${i + 1}" value="${optionValue}" oninput="clearError('mcqOptions')">
+                ${count > 2 ? `<button type="button" class="btn-remove-option" onclick="removeOption(${i})" title="Remove option">×</button>` : ''}
+            `;
+            container.appendChild(row);
         }
+        
+        mcqOptionsCount = count;
+        if (editData) {
+            selectedCorrectAnswer = editData.correctAnswer;
+        }
+    }
 
-        function renderMCQOptions(count, editData = null) {
-            const container = document.getElementById('mcqOptionsList');
-            container.innerHTML = '';
-            
-            for (let i = 0; i < count; i++) {
-                const isSelected = editData ? (i === editData.correctAnswer) : (i === selectedCorrectAnswer);
-                const optionValue = editData && editData.options[i] ? editData.options[i] : '';
-                
-                const row = document.createElement('div');
-                row.className = 'option-input-row';
-                row.innerHTML = `
-                    <button type="button" class="option-select-btn ${isSelected ? 'selected' : ''}" data-option="${i}" onclick="selectCorrectAnswer(${i})">
-                        ${isSelected ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-                    </button>
-                    <input type="text" id="mcqOption${i + 1}" placeholder="Option ${i + 1}" value="${optionValue}" oninput="clearError('mcqOptions')">
-                    ${count > 2 ? `<button type="button" class="btn-remove-option" onclick="removeOption(${i})" title="Remove option">×</button>` : ''}
-                `;
-                container.appendChild(row);
-            }
-            
-            mcqOptionsCount = count;
-            if (editData) {
-                selectedCorrectAnswer = editData.correctAnswer;
+    function addOption() {
+        if (mcqOptionsCount >= 10) {
+            alert('Maximum 10 options allowed');
+            return;
+        }
+        mcqOptionsCount++;
+        renderMCQOptions(mcqOptionsCount);
+    }
+
+    function removeOption(index) {
+        if (mcqOptionsCount <= 2) {
+            alert('Minimum 2 options required');
+            return;
+        }
+        
+        const currentValues = [];
+        for (let i = 0; i < mcqOptionsCount; i++) {
+            const input = document.getElementById(`mcqOption${i + 1}`);
+            if (input && i !== index) {
+                currentValues.push(input.value);
             }
         }
-
-        function addOption() {
-            if (mcqOptionsCount >= 10) {
-                alert('Maximum 10 options allowed');
-                return;
-            }
-            mcqOptionsCount++;
-            renderMCQOptions(mcqOptionsCount);
-        }
-
-        function removeOption(index) {
-            if (mcqOptionsCount <= 2) {
-                alert('Minimum 2 options required');
-                return;
-            }
-            
-            const currentValues = [];
-            for (let i = 0; i < mcqOptionsCount; i++) {
-                const input = document.getElementById(`mcqOption${i + 1}`);
-                if (input && i !== index) {
-                    currentValues.push(input.value);
-                }
-            }
-            
-            if (selectedCorrectAnswer === index) {
-                selectedCorrectAnswer = 0;
-            } else if (selectedCorrectAnswer > index) {
-                selectedCorrectAnswer--;
-            }
-            
-            mcqOptionsCount--;
-            renderMCQOptions(mcqOptionsCount);
-            
-            currentValues.forEach((val, i) => {
-                const input = document.getElementById(`mcqOption${i + 1}`);
-                if (input) input.value = val;
-            });
-        }
-
-        function resetMCQForm() {
-            document.getElementById('mcqEditId').value = '';
-            document.getElementById('mcqQuestion').value = '';
-            document.getElementById('mcqPoints').value = '5';
+        
+        if (selectedCorrectAnswer === index) {
             selectedCorrectAnswer = 0;
-            mcqOptionsCount = 4;
-            renderMCQOptions(4);
-            clearAllErrors();
+        } else if (selectedCorrectAnswer > index) {
+            selectedCorrectAnswer--;
         }
+        
+        mcqOptionsCount--;
+        renderMCQOptions(mcqOptionsCount);
+        
+        currentValues.forEach((val, i) => {
+            const input = document.getElementById(`mcqOption${i + 1}`);
+            if (input) input.value = val;
+        });
+    }
 
-        function resetEssayForm() {
-            document.getElementById('essayEditId').value = '';
-            document.getElementById('essayQuestion').value = '';
-            document.getElementById('essayPoints').value = '20';
-            document.getElementById('essayRubric').value = '';
-            document.getElementById('essayReferenceAnswer').value = '';
-            clearAllErrors();
+    function resetMCQForm() {
+        document.getElementById('mcqEditId').value = '';
+        document.getElementById('mcqQuestion').value = '';
+        document.getElementById('mcqPoints').value = '5';
+        selectedCorrectAnswer = 0;
+        mcqOptionsCount = 4;
+        renderMCQOptions(4);
+        clearAllErrors();
+    }
+
+    function resetEssayForm() {
+        document.getElementById('essayEditId').value = '';
+        document.getElementById('essayQuestion').value = '';
+        document.getElementById('essayPoints').value = '20';
+        document.getElementById('essayRubric').value = '';
+        document.getElementById('essayReferenceAnswer').value = '';
+        clearAllErrors();
+    }
+
+    function openMCQModal(e) {
+        if (e) e.preventDefault();
+        resetMCQForm();
+        document.getElementById('mcqModalTitle').textContent = 'Add MCQ Question';
+        document.querySelector('#mcqModal .modal-title-group p').textContent = 'Create a multiple choice question';
+        document.getElementById('mcqSubmitBtn').textContent = 'Add Question';
+        document.getElementById('mcqModal').classList.add('active');
+    }
+
+    function openEssayModal(e) {
+        if (e) e.preventDefault();
+        resetEssayForm();
+        document.getElementById('essayModalTitle').textContent = 'Add Essay Question';
+        document.querySelector('#essayModal .modal-title-group p').textContent = 'Create an essay question';
+        document.getElementById('essaySubmitBtn').textContent = 'Add Question';
+        document.getElementById('essayModal').classList.add('active');
+    }
+
+    async function editQuestion(id, type) {
+        if (currentExam.status === 'completed') {
+            alert('Cannot edit questions for completed exams');
+            return;
         }
-
-        function openMCQModal(e) {
-            if (e) e.preventDefault();
-            resetMCQForm();
-            document.getElementById('mcqModalTitle').textContent = 'Add MCQ Question';
-            document.querySelector('#mcqModal .modal-title-group p').textContent = 'Create a multiple choice question';
-            document.getElementById('mcqSubmitBtn').textContent = 'Add Question';
-            document.getElementById('mcqModal').classList.add('active');
-        }
-
-        function openEssayModal(e) {
-            if (e) e.preventDefault();
-            resetEssayForm();
-            document.getElementById('essayModalTitle').textContent = 'Add Essay Question';
-            document.querySelector('#essayModal .modal-title-group p').textContent = 'Create an essay question';
-            document.getElementById('essaySubmitBtn').textContent = 'Add Question';
-            document.getElementById('essayModal').classList.add('active');
-        }
-
-        async function editQuestion(id, type) {
-            if (currentExam.status === 'completed') {
-                alert('Cannot edit questions for completed exams');
-                return;
-            }
+        
+        try {
+            const response = await axios.get(`/questions/${id}`);
+            const question = response.data;
             
-            try {
-                const response = await axios.get(`/questions/${id}`);
-                const question = response.data;
+            if (type === 'mcq') {
+                document.getElementById('mcqEditId').value = id;
+                document.getElementById('mcqQuestion').value = question.question_text;
+                document.getElementById('mcqPoints').value = question.marks;
                 
-                if (type === 'mcq') {
-                    document.getElementById('mcqEditId').value = id;
-                    document.getElementById('mcqQuestion').value = question.question_text;
-                    document.getElementById('mcqPoints').value = question.marks;
-                    
-                    const correctIndex = question.options.findIndex(opt => opt.is_correct);
-                    const optionsData = {
-                        options: question.options.map(opt => opt.option_text),
-                        correctAnswer: correctIndex
-                    };
-                    
-                    renderMCQOptions(question.options.length, optionsData);
-                    
-                    document.getElementById('mcqModalTitle').textContent = 'Edit MCQ Question';
-                    document.querySelector('#mcqModal .modal-title-group p').textContent = 'Update multiple choice question';
-                    document.getElementById('mcqSubmitBtn').textContent = 'Update Question';
-                    document.getElementById('mcqModal').classList.add('active');
-                } else {
-                    document.getElementById('essayEditId').value = id;
-                    document.getElementById('essayQuestion').value = question.question_text;
-                    document.getElementById('essayPoints').value = question.marks;
-                    document.getElementById('essayRubric').value = question.rubric || '';
-                    document.getElementById('essayReferenceAnswer').value = question.reference_answer || '';
-                    
-                    document.getElementById('essayModalTitle').textContent = 'Edit Essay Question';
-                    document.querySelector('#essayModal .modal-title-group p').textContent = 'Update essay question';
-                    document.getElementById('essaySubmitBtn').textContent = 'Update Question';
-                    document.getElementById('essayModal').classList.add('active');
-                }
-            } catch (error) {
-                console.error('Error loading question:', error);
-                alert('Failed to load question: ' + (error.response?.data?.detail || error.message));
-            }
-        }
-
-        function closeAllModals() {
-            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
-            clearAllErrors();
-        }
-
-        async function saveMCQ(e) {
-            e.preventDefault();
-            
-            // Validate form
-            if (!validateMCQForm()) {
-                return;
-            }
-            
-            const editId = document.getElementById('mcqEditId').value;
-            const options = [];
-            
-            for (let i = 0; i < mcqOptionsCount; i++) {
-                const optionInput = document.getElementById(`mcqOption${i + 1}`);
-                if (optionInput && optionInput.value.trim()) {
-                    options.push(optionInput.value.trim());
-                }
-            }
-            
-            const questionData = {
-                exam_id: parseInt(examId),
-                question_text: document.getElementById('mcqQuestion').value.trim(),
-                marks: parseInt(document.getElementById('mcqPoints').value),
-                options: options,
-                correct_option_index: selectedCorrectAnswer
-            };
-            
-            try {
-                if (editId) {
-                    await axios.put(`/questions/mcq/${editId}`, questionData);
-                    showSuccessMessage('MCQ Question updated successfully!');
-                } else {
-                    await axios.post('/questions/mcq', questionData);
-                    showSuccessMessage('MCQ Question added successfully!');
-                }
+                const correctIndex = question.options.findIndex(opt => opt.is_correct);
+                const optionsData = {
+                    options: question.options.map(opt => opt.option_text),
+                    correctAnswer: correctIndex
+                };
                 
-                await loadExamData();
-                closeAllModals();
+                renderMCQOptions(question.options.length, optionsData);
                 
-            } catch (error) {
-                console.error('Error saving question:', error);
-                const errorMsg = error.response?.data?.detail || error.message;
-                alert('Failed to save question: ' + errorMsg);
+                document.getElementById('mcqModalTitle').textContent = 'Edit MCQ Question';
+                document.querySelector('#mcqModal .modal-title-group p').textContent = 'Update multiple choice question';
+                document.getElementById('mcqSubmitBtn').textContent = 'Update Question';
+                document.getElementById('mcqModal').classList.add('active');
+            } else {
+                document.getElementById('essayEditId').value = id;
+                document.getElementById('essayQuestion').value = question.question_text;
+                document.getElementById('essayPoints').value = question.marks;
+                document.getElementById('essayRubric').value = question.rubric || '';
+                document.getElementById('essayReferenceAnswer').value = question.reference_answer || '';
+                
+                document.getElementById('essayModalTitle').textContent = 'Edit Essay Question';
+                document.querySelector('#essayModal .modal-title-group p').textContent = 'Update essay question';
+                document.getElementById('essaySubmitBtn').textContent = 'Update Question';
+                document.getElementById('essayModal').classList.add('active');
+            }
+        } catch (error) {
+            console.error('Error loading question:', error);
+            alert('Failed to load question: ' + (error.response?.data?.detail || error.message));
+        }
+    }
+
+    function closeAllModals() {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+        clearAllErrors();
+    }
+
+    async function saveMCQ(e) {
+        e.preventDefault();
+        
+        if (!validateMCQForm()) {
+            return;
+        }
+        
+        const editId = document.getElementById('mcqEditId').value;
+        const options = [];
+        
+        for (let i = 0; i < mcqOptionsCount; i++) {
+            const optionInput = document.getElementById(`mcqOption${i + 1}`);
+            if (optionInput && optionInput.value.trim()) {
+                options.push(optionInput.value.trim());
             }
         }
-
-        async function saveEssay(e) {
-            e.preventDefault();
-            
-            // Validate form
-            if (!validateEssayForm()) {
-                return;
+        
+        const questionData = {
+            exam_id: parseInt(examId),
+            question_text: document.getElementById('mcqQuestion').value.trim(),
+            marks: parseInt(document.getElementById('mcqPoints').value),
+            options: options,
+            correct_option_index: selectedCorrectAnswer
+        };
+        
+        try {
+            if (editId) {
+                await axios.put(`/questions/mcq/${editId}`, questionData);
+                showSuccessMessage('MCQ Question updated successfully!');
+            } else {
+                await axios.post('/questions/mcq', questionData);
+                showSuccessMessage('MCQ Question added successfully!');
             }
             
-            const editId = document.getElementById('essayEditId').value;
+            await loadExamData();
+            closeAllModals();
             
-            const questionData = {
-                exam_id: parseInt(examId),
-                question_text: document.getElementById('essayQuestion').value.trim(),
-                marks: parseInt(document.getElementById('essayPoints').value),
-                rubric: document.getElementById('essayRubric').value.trim() || null,
-                word_limit: null,
-                reference_answer: document.getElementById('essayReferenceAnswer').value.trim() || null
-            };
-            
-            try {
-                if (editId) {
-                    await axios.put(`/questions/essay/${editId}`, questionData);
-                    showSuccessMessage('Essay Question updated successfully!');
-                } else {
-                    await axios.post('/questions/essay', questionData);
-                    showSuccessMessage('Essay Question added successfully!');
-                }
-                
-                await loadExamData();
-                closeAllModals();
-                
-            } catch (error) {
-                console.error('Error saving question:', error);
-                const errorMsg = error.response?.data?.detail || error.message;
-                alert('Failed to save question: ' + errorMsg);
-            }
+        } catch (error) {
+            console.error('Error saving question:', error);
+            const errorMsg = error.response?.data?.detail || error.message;
+            alert('Failed to save question: ' + errorMsg);
         }
+    }
 
-        async function deleteQuestion(id) {
-            if (!confirm('Are you sure you want to delete this question?')) {
-                return;
+    async function saveEssay(e) {
+        e.preventDefault();
+        
+        if (!validateEssayForm()) {
+            return;
+        }
+        
+        const editId = document.getElementById('essayEditId').value;
+        
+        const questionData = {
+            exam_id: parseInt(examId),
+            question_text: document.getElementById('essayQuestion').value.trim(),
+            marks: parseInt(document.getElementById('essayPoints').value),
+            rubric: document.getElementById('essayRubric').value.trim() || null,
+            word_limit: null,
+            reference_answer: document.getElementById('essayReferenceAnswer').value.trim() || null
+        };
+        
+        try {
+            if (editId) {
+                await axios.put(`/questions/essay/${editId}`, questionData);
+                showSuccessMessage('Essay Question updated successfully!');
+            } else {
+                await axios.post('/questions/essay', questionData);
+                showSuccessMessage('Essay Question added successfully!');
             }
             
-            try {
-                await axios.delete(`/questions/${id}`);
-                showSuccessMessage('Question deleted successfully!');
-                await loadExamData();
-                
-            } catch (error) {
-                console.error('Error deleting question:', error);
-                alert('Failed to delete question: ' + (error.response?.data?.detail || error.message));
-            }
+            await loadExamData();
+            closeAllModals();
+            
+        } catch (error) {
+            console.error('Error saving question:', error);
+            const errorMsg = error.response?.data?.detail || error.message;
+            alert('Failed to save question: ' + errorMsg);
         }
+    }
 
-        function goToGrading(studentId, examId) {
-            const submission = currentExam.submissions.find(s => s.studentId === studentId);
-            if (!submission) {
-                alert("Submission not found");
-                return;
-            }
-            window.location.href = `examGrading?submissionId=sub${submission.id}&examId=${examId}`;
+    async function deleteQuestion(id) {
+        if (!confirm('Are you sure you want to delete this question?')) {
+            return;
         }
+        
+        try {
+            await axios.delete(`/questions/${id}`);
+            showSuccessMessage('Question deleted successfully!');
+            await loadExamData();
+            
+        } catch (error) {
+            console.error('Error deleting question:', error);
+            alert('Failed to delete question: ' + (error.response?.data?.detail || error.message));
+        }
+    }
 
-        init();
-    </script>
+    function goToGrading(submissionId, examId) {
+        window.location.href = `/examGrading?submissionId=${submissionId}&examId=${examId}`;
+    }
+
+    init();
+</script>
 </body>
 </html>

@@ -14,38 +14,40 @@ class MCQQuestionCreate(BaseModel):
     options: List[str]
     correct_option_index: int
 
-    @field_validator('question_text')
+    @field_validator("question_text")
     @classmethod
     def validate_question_text(cls, v):
         if not v or not v.strip():
             raise ValueError("Question text cannot be empty")
         return v.strip()
 
-    @field_validator('marks')
+    @field_validator("marks")
     @classmethod
     def validate_marks(cls, v):
         if v < 1:
             raise ValueError("Marks must be at least 1")
         return v
 
-    @field_validator('options')
+    @field_validator("options")
     @classmethod
     def validate_options(cls, v):
         if not v or len(v) < 2:
             raise ValueError("At least 2 options are required")
-        
+
         for i, opt in enumerate(v):
             if not opt or not opt.strip():
                 raise ValueError(f"Option {i + 1} cannot be empty")
-        
+
         return [opt.strip() for opt in v]
 
-    @field_validator('correct_option_index')
+    @field_validator("correct_option_index")
     @classmethod
     def validate_correct_option(cls, v, info):
-        options = info.data.get('options', [])
+        options = info.data.get("options", [])
         if options and (v < 0 or v >= len(options)):
-            raise ValueError(f"Correct option index must be between 0 and {len(options) - 1}")
+            raise ValueError(
+                f"Correct option index must be between 0 and {len(options) - 1}"
+            )
         return v
 
 
@@ -55,30 +57,30 @@ class MCQQuestionUpdate(BaseModel):
     options: List[str]
     correct_option_index: int
 
-    @field_validator('question_text')
+    @field_validator("question_text")
     @classmethod
     def validate_question_text(cls, v):
         if not v or not v.strip():
             raise ValueError("Question text cannot be empty")
         return v.strip()
 
-    @field_validator('marks')
+    @field_validator("marks")
     @classmethod
     def validate_marks(cls, v):
         if v < 1:
             raise ValueError("Marks must be at least 1")
         return v
 
-    @field_validator('options')
+    @field_validator("options")
     @classmethod
     def validate_options(cls, v):
         if not v or len(v) < 2:
             raise ValueError("At least 2 options are required")
-        
+
         for i, opt in enumerate(v):
             if not opt or not opt.strip():
                 raise ValueError(f"Option {i + 1} cannot be empty")
-        
+
         return [opt.strip() for opt in v]
 
 
@@ -89,14 +91,14 @@ class EssayQuestionCreate(BaseModel):
     rubric: Optional[str] = None
     reference_answer: Optional[str] = None
 
-    @field_validator('question_text')
+    @field_validator("question_text")
     @classmethod
     def validate_question_text(cls, v):
         if not v or not v.strip():
             raise ValueError("Question text cannot be empty")
         return v.strip()
 
-    @field_validator('marks')
+    @field_validator("marks")
     @classmethod
     def validate_marks(cls, v):
         if v < 1:
@@ -110,7 +112,7 @@ class EssayQuestionUpdate(BaseModel):
     rubric: Optional[str] = None
     reference_answer: Optional[str] = None
 
-    @field_validator('question_text')
+    @field_validator("question_text")
     @classmethod
     def validate_question_text(cls, v):
         if not v or not v.strip():
@@ -126,7 +128,7 @@ def add_mcq_question(question: MCQQuestionCreate):
             question_text=question.question_text,
             marks=question.marks,
             options=question.options,
-            correct_option_index=question.correct_option_index
+            correct_option_index=question.correct_option_index,
         )
         return result
     except ValueError as e:
@@ -141,7 +143,7 @@ def update_mcq_question(question_id: int, question: MCQQuestionUpdate):
             question_text=question.question_text,
             marks=question.marks,
             options=question.options,
-            correct_option_index=question.correct_option_index
+            correct_option_index=question.correct_option_index,
         )
         return result
     except ValueError as e:
@@ -157,7 +159,7 @@ def add_essay_question(question: EssayQuestionCreate):
             marks=question.marks,
             rubric=question.rubric,
             word_limit=None,
-            reference_answer=question.reference_answer
+            reference_answer=question.reference_answer,
         )
         return result
     except ValueError as e:
@@ -173,7 +175,7 @@ def update_essay_question(question_id: int, question: EssayQuestionUpdate):
             marks=question.marks,
             rubric=question.rubric,
             word_limit=None,
-            reference_answer=question.reference_answer
+            reference_answer=question.reference_answer,
         )
         return result
     except ValueError as e:
