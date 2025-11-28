@@ -253,7 +253,7 @@
                 const response = await axios.post('/exams/submit', submissionData);
                 
                 // Handle response
-                handleSubmissionResponse(response.data);
+                // handleSubmissionResponse(response.data);
                 
             } catch (error) {
                 console.error("Submission error:", error);
@@ -286,7 +286,7 @@
             alert(message);
             
             // Redirect to exam list or results page
-            window.location.href = "exam-list.html";
+            // window.location.href = "exam-list.html";
         }
 
         function handleSubmissionError(error) {
@@ -323,8 +323,8 @@
                 
                 if (remainingSeconds <= 0) {
                     clearInterval(timerInterval);
-                    alert("Time is up! Submitting exam...");
-                    submitExamToBackend();
+                    // alert("Time is up! Submitting exam...");
+                    // submitExamToBackend();
                 }
             }, 1000);
         }
