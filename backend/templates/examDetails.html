@@ -75,6 +75,31 @@
             background-color: #d1fae5;
             color: #059669;
         }
+
+        .student-avatar.blue {
+            background-color: #3b82f6;
+        }
+
+        .student-avatar.green {
+            background-color: #10b981;
+        }
+
+        .student-avatar.purple {
+            background-color: #8b5cf6;
+        }
+
+        .student-avatar.orange {
+            background-color: #f97316;
+        }
+
+        .student-avatar.pink {
+            background-color: #ec4899;
+        }
+
+        .student-avatar.teal {
+            background-color: #14b8a6;
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateX(400px);
@@ -579,53 +604,61 @@
             });
         }
 
-        function transformSubmissions(submissions) {
-            return submissions.map(sub => {
-                // Generate avatar from name
-                const name = sub.student_name || sub.student_email;
-                const nameParts = name.split(' ');
-                const avatar = nameParts.length > 1 
-                    ? nameParts[0][0].toUpperCase() + nameParts[1][0].toUpperCase()
-                    : name.substring(0, 2).toUpperCase();
-                
-                // Avatar colors
-                const colors = ['blue', 'green', 'purple', 'orange', 'pink', 'teal'];
-                const avatarColor = colors[sub.student_id % colors.length];
-                
-                // Calculate percentage if score exists
-                let percentage = '';
-                if (sub.score !== null && sub.score !== undefined) {
-                    const totalPoints = currentExam?.questions.reduce((sum, q) => sum + q.points, 0) || 100;
-                    const percent = Math.round((sub.score / totalPoints) * 100);
-                    percentage = `${percent}%`;
-                }
-                
-                return {
-                    id: sub.submission_id,
-                    studentId: `STU${String(sub.student_id).padStart(4, '0')}`,
-                    studentName: sub.student_name || sub.student_email,
-                    studentEmail: sub.student_email,
-                    avatar: avatar,
-                    avatarColor: avatarColor,
-                    status: sub.status, // 'submitted' or 'missed'
-                    submissionDate: sub.submission_date 
-                        ? formatDate(sub.submission_date)
-                        : null,
-                    submissionTime: sub.submission_time || null,
-                    score: sub.score,
-                    scoreGrade: sub.score_grade,
-                    percentage: percentage,
-                    feedback: sub.overall_feedback
-                };
-            });
+       function transformSubmissions(submissions) {
+        return submissions.map(sub => {
+            // Generate avatar from name
+            const name = sub.student_name || sub.student_email;
+            const nameParts = name.split(' ');
+            const avatar = nameParts.length > 1 
+                ? nameParts[0][0].toUpperCase() + nameParts[1][0].toUpperCase()
+                : name.substring(0, 2).toUpperCase();
+            
+            // Avatar colors - use modulo to cycle through colors
+            const colors = ['blue', 'green', 'purple', 'orange', 'pink', 'teal'];
+            const colorIndex = Math.abs(sub.student_id) % colors.length;
+            const avatarColor = colors[colorIndex];
+            
+            // Calculate percentage if score exists
+            let percentage = '';
+            if (sub.score !== null && sub.score !== undefined) {
+                const totalPoints = currentExam?.questions.reduce((sum, q) => sum + q.points, 0) || 100;
+                const percent = Math.round((sub.score / totalPoints) * 100);
+                percentage = `${percent}%`;
+            }
+            
+            // Format time to show only HH:MM
+            let formattedTime = null;
+            if (sub.submission_time) {
+                formattedTime = sub.submission_time.substring(0, 5); // Gets HH:MM from HH:MM:SS
+            }
+            
+            return {
+                id: sub.submission_id,
+                studentId: `STU${String(sub.student_id).padStart(4, '0')}`,
+                studentName: sub.student_name || sub.student_email,
+                studentEmail: sub.student_email,
+                avatar: avatar,
+                avatarColor: avatarColor,
+                status: sub.status,
+                submissionDate: sub.submission_date 
+                    ? formatDate(sub.submission_date)
+                    : null,
+                submissionTime: formattedTime,
+                score: sub.score,
+                scoreGrade: sub.score_grade,
+                percentage: percentage,
+                feedback: sub.overall_feedback
+            };
+        });
         }
-
         function formatDate(dateStr) {
-            // Format date from YYYY-MM-DD to readable format
+        // Format date from YYYY-MM-DD to readable format
             if (!dateStr) return '-';
             const date = new Date(dateStr);
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            return date.toLocaleDateString('en-US', options);
+            const day = date.getDate();
+            const month = date.toLocaleString('en-US', { month: 'short' });
+            const year = date.getFullYear();
+            return `${day} ${month} ${year}`;
         }
 
         function init() {

@@ -29,11 +29,12 @@ def get_submission_for_grading(submission_id: int):
     - Exam info
     - All questions with student answers
     - MCQ auto-graded results
+    - Overall feedback (if previously saved)
     """
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                # Get submission basic info
+                # Get submission basic info - INCLUDE overall_feedback and score
                 cur.execute("""
                     SELECT 
                         s.id as submission_id,
@@ -42,6 +43,9 @@ def get_submission_for_grading(submission_id: int):
                         s.submission_date,
                         s.submission_time,
                         s.status,
+                        s.score as current_score,
+                        s.score_grade,
+                        s.overall_feedback,
                         u.user_email as student_email,
                         u.user_email as student_name
                     FROM submission s
@@ -150,8 +154,8 @@ def get_submission_for_grading(submission_id: int):
                         'student_email': submission['student_email'],
                         'submitted_at': f"{submission['submission_date']} {submission['submission_time']}" if submission['submission_date'] else None,
                         'current_score': current_total_score,
-                        'score_grade': None,
-                        'overall_feedback': None
+                        'score_grade': submission['score_grade'],
+                        'overall_feedback': submission['overall_feedback']  # ADDED THIS
                     },
                     'exam': {
                         'id': exam['id'],
@@ -183,7 +187,7 @@ def save_grades(grades: SaveGradesInput):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                # Update essay answers (only score and feedback in submissionAnswer)
+                # Update essay answers
                 for essay_grade in grades.essay_grades:
                     cur.execute("""
                         UPDATE "submissionAnswer"
@@ -191,8 +195,24 @@ def save_grades(grades: SaveGradesInput):
                         WHERE id = %s
                     """, (essay_grade.score, essay_grade.feedback, essay_grade.submission_answer_id))
                 
+                # Update submission with status='graded' and overall feedback
+                cur.execute("""
+                    UPDATE submission
+                    SET status = 'graded',
+                        score = %s,
+                        score_grade = %s,
+                        overall_feedback = %s
+                    WHERE id = %s
+                    RETURNING id
+                """, (grades.total_score, grades.score_grade, grades.overall_feedback, grades.submission_id))
+                
+                result = cur.fetchone()
                 conn.commit()
                 
+                if not result:
+                    raise HTTPException(status_code=404, detail="Submission not found")
+                
+                print(f"✅ Grades saved for submission {grades.submission_id}: Score={grades.total_score}, Feedback={grades.overall_feedback}")
                 return {"success": True, "message": "Grades saved successfully"}
                 
     except HTTPException:
