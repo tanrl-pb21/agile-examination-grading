@@ -5,89 +5,261 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review Submission - Student Portal</title>
     <link rel="stylesheet" href="../static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios@latest/dist/axios.min.js"></script>
+    <style>
+        .error-notification {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .error-notification-content {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            animation: scaleIn 0.3s ease-out;
+        }
+        .error-notification-icon {
+            width: 56px;
+            height: 56px;
+            background: #fee2e2;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        .error-notification-icon svg {
+            width: 28px;
+            height: 28px;
+            color: #ef4444;
+        }
+        .error-notification-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #111827;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .error-notification-message {
+            font-size: 14px;
+            color: #6b7280;
+            text-align: center;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .error-notification-btn {
+            width: 100%;
+            padding: 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .error-notification-btn:hover {
+            background: #2563eb;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="review-container">
-        <!-- Header Bar -->
-        <div class="review-header-bar">
-            <div class="review-header-left">
-                <button class="btn-back-link" onclick="window.location.href='studentSubmissionList.html'">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 12H5M12 19l-7-7 7-7"/>
-                    </svg>
-                    Back to Submissions
-                </button>
-                <h2 class="review-exam-title" id="reviewExamTitle">Mathematics Final Examination</h2>
-                <p class="review-exam-id">Submission ID: <span id="reviewSubmissionId">sub2002</span></p>
-            </div>
-            <div class="review-header-right">
-                <div class="review-score-badge">
-                    <span class="review-score-text" id="reviewScore">1/2</span>
-                    <span class="review-percentage" id="reviewPercentage">50.0%</span>
-                </div>
-            </div>
+        <!-- Loading State -->
+        <div id="loadingState" style="text-align: center; padding: 40px;">
+            <p>Loading submission review...</p>
         </div>
 
-        <!-- Review Content -->
-        <div class="review-content">
-            <!-- Questions will be generated here -->
-            <div id="reviewQuestionsContainer"></div>
+        <!-- Review Content (hidden until loaded) -->
+        <div id="reviewContent" style="display: none;">
+            <!-- Header Bar -->
+            <div class="review-header-bar">
+                <div class="review-header-left">
+                    <button class="btn-back-link" onclick="window.location.href='/studentSubmissionList'">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        Back to Submissions
+                    </button>
+                    <h2 class="review-exam-title" id="reviewExamTitle">Loading...</h2>
+                    <p class="review-exam-id">Submission ID: <span id="reviewSubmissionId">...</span></p>
+                </div>
+                <div class="review-header-right">
+                    <div class="review-score-badge">
+                        <span class="review-score-text" id="reviewScore">-/-</span>
+                        <span class="review-percentage" id="reviewPercentage">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overall Feedback (if available) -->
+            <div id="overallFeedbackSection" style="display: none; margin: 20px; padding: 20px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 8px;">
+                <h3 style="margin: 0 0 10px 0; color: #1e40af;">Overall Feedback</h3>
+                <p id="overallFeedbackText" style="margin: 0; color: #1e3a8a;"></p>
+            </div>
+
+            <!-- Review Content -->
+            <div class="review-content">
+                <!-- Questions will be generated here -->
+                <div id="reviewQuestionsContainer"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Mock review data
-        const reviewData = {
-            submissionId: 'sub2002',
-            examTitle: 'Mathematics Final Examination',
-            examId: 'MATH-FINAL-2025',
-            score: '1/2',
-            percentage: '50.0%',
-            questions: [
-                {
-                    id: 1,
-                    type: 'Multiple Choice',
-                    marks: 5,
-                    earnedMarks: 5,
-                    questionNumber: 1,
-                    question: 'What is the capital of France?',
-                    options: [
-                        { id: 'A', text: 'London', isCorrect: false },
-                        { id: 'B', text: 'Paris', isCorrect: true },
-                        { id: 'C', text: 'Berlin', isCorrect: false },
-                        { id: 'D', text: 'Madrid', isCorrect: false }
-                    ],
-                    selectedAnswer: 'B',
-                    isCorrect: true
-                },
-                {
-                    id: 2,
-                    type: 'Multiple Choice',
-                    marks: 5,
-                    earnedMarks: 0,
-                    questionNumber: 2,
-                    question: 'Which planet is known as the Red Planet?',
-                    options: [
-                        { id: 'A', text: 'Venus', isCorrect: false },
-                        { id: 'B', text: 'Mars', isCorrect: true },
-                        { id: 'C', text: 'Jupiter', isCorrect: false },
-                        { id: 'D', text: 'Saturn', isCorrect: false }
-                    ],
-                    selectedAnswer: 'A',
-                    isCorrect: false
-                },
-                {
-                    id: 3,
-                    type: 'Essay Question',
-                    marks: 20,
-                    earnedMarks: 15,
-                    questionNumber: 3,
-                    question: 'Discuss the impact of climate change on global ecosystems and propose three practical solutions that governments can implement to mitigate its effects.',
-                    answer: 'Climate change has profound effects on global ecosystems. Rising temperatures disrupt habitats, leading to species migration and extinction. Three solutions include: 1) Implementing carbon pricing to incentivize emission reductions, 2) Investing in renewable energy infrastructure, and 3) Protecting and restoring natural carbon sinks like forests and wetlands.',
-                    feedback: 'Good understanding of the topic. Your solutions are practical and well-explained. Consider adding more specific examples in future responses.'
+        const urlParams = new URLSearchParams(window.location.search);
+        const submissionId = urlParams.get('id');
+        const CURRENT_USER_ID = urlParams.get('userId');
+
+        // Immediate validation before anything else runs
+        (function validateSubmissionIdImmediate() {
+            if (!submissionId) {
+                return; // Will be handled by init()
+            }
+            
+            const submissionIdNum = parseInt(submissionId);
+            if (isNaN(submissionIdNum) || submissionIdNum <= 0 || submissionId.trim() !== submissionIdNum.toString()) {
+                // Invalid ID detected - show error immediately
+                document.body.innerHTML = `
+                    <div class="error-notification">
+                        <div class="error-notification-content">
+                            <div class="error-notification-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="8" x2="12" y2="12"/>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                </svg>
+                            </div>
+                            <h3 class="error-notification-title">Invalid Submission ID</h3>
+                            <p class="error-notification-message">The submission ID must be a valid number. Please select a submission from the list.</p>
+                            <button class="error-notification-btn" onclick="window.location.href='/studentSubmissionList'">
+                                Return to Submissions
+                            </button>
+                        </div>
+                    </div>
+                `;
+                throw new Error('Invalid submission ID - stopping execution');
+            }
+        })();
+
+        let reviewData = null;
+
+        function showErrorNotification(title, message, callback) {
+            const notification = document.createElement('div');
+            notification.className = 'error-notification';
+            notification.innerHTML = `
+                <div class="error-notification-content">
+                    <div class="error-notification-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                    </div>
+                    <h3 class="error-notification-title">${title}</h3>
+                    <p class="error-notification-message">${message}</p>
+                    <button class="error-notification-btn" onclick="${callback}">
+                        Return to Submissions
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(notification);
+        }
+
+        function redirectToSubmissions() {
+            window.location.href = '/studentSubmissionList';
+        }
+
+        // Fetch submission review from backend
+        async function loadSubmissionReview() {
+            if (!submissionId) {
+                showErrorNotification(
+                    'No Submission Selected',
+                    'Please select a submission from the submissions list.',
+                    'redirectToSubmissions()'
+                );
+                return;
+            }
+
+            if (!CURRENT_USER_ID) {
+                showErrorNotification(
+                    'Authentication Required',
+                    'User ID is missing. Please log in again.',
+                    'redirectToSubmissions()'
+                );
+                return;
+            }
+
+            try {
+                const response = await axios.get(`/submissions/${submissionId}/review?user_id=${CURRENT_USER_ID}`);
+                reviewData = response.data;
+                
+                console.log('Loaded review data:', reviewData);
+                
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('reviewContent').style.display = 'block';
+                
+                renderReviewQuestions();
+            } catch (error) {
+                console.error('Error loading submission review:', error);
+                
+                // Hide loading state
+                document.getElementById('loadingState').style.display = 'none';
+                
+                // Determine error title and message
+                let errorTitle = 'Submission Not Found';
+                let errorMessage = 'The submission you are looking for does not exist or may have been deleted.';
+                
+                if (error.response?.status === 404) {
+                    errorTitle = 'Submission Not Found';
+                    errorMessage = 'The submission you are looking for does not exist or may have been deleted.';
+                } else if (error.response?.status === 403) {
+                    errorTitle = 'Access Denied';
+                    errorMessage = 'You do not have permission to view this submission.';
+                } else if (error.response?.status === 422) {
+                    errorTitle = 'Invalid Submission ID';
+                    errorMessage = 'The submission ID must be a valid number. Please select a submission from the list.';
+                } else if (error.code === 'ERR_NETWORK') {
+                    errorTitle = 'Connection Error';
+                    errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+                } else if (error.response?.data?.detail) {
+                    errorTitle = 'Error Loading Submission';
+                    errorMessage = error.response.data.detail;
                 }
-            ]
-        };
+                
+                showErrorNotification(errorTitle, errorMessage, 'redirectToSubmissions()');
+            }
+        }
 
         // Render review questions
         function renderReviewQuestions() {
@@ -95,6 +267,12 @@
             document.getElementById('reviewSubmissionId').textContent = reviewData.submissionId;
             document.getElementById('reviewScore').textContent = reviewData.score;
             document.getElementById('reviewPercentage').textContent = reviewData.percentage;
+
+            // Show overall feedback if available
+            if (reviewData.overallFeedback) {
+                document.getElementById('overallFeedbackSection').style.display = 'block';
+                document.getElementById('overallFeedbackText').textContent = reviewData.overallFeedback;
+            }
 
             const container = document.getElementById('reviewQuestionsContainer');
             container.innerHTML = reviewData.questions.map(q => {
@@ -156,7 +334,7 @@
                                 
                                 <div class="review-essay-section">
                                     <div class="review-section-label">Your Answer:</div>
-                                    <div class="review-essay-answer">${q.answer}</div>
+                                    <div class="review-essay-answer">${q.answer || 'No answer provided'}</div>
                                 </div>
 
                                 ${q.feedback ? `
@@ -178,7 +356,31 @@
         }
 
         // Initialize
-        renderReviewQuestions();
+        function init() {
+            if (!submissionId) {
+                showErrorNotification(
+                    'No Submission Selected',
+                    'Please select a submission from the submissions list.',
+                    'redirectToSubmissions()'
+                );
+                return;
+            }
+            
+            // Validate submission ID format before making any API calls
+            const submissionIdNum = parseInt(submissionId);
+            if (isNaN(submissionIdNum) || submissionIdNum <= 0 || submissionId.trim() !== submissionIdNum.toString()) {
+                showErrorNotification(
+                    'Invalid Submission ID',
+                    'The submission ID must be a valid number. Please select a submission from the list.',
+                    'redirectToSubmissions()'
+                );
+                return;
+            }
+            
+            loadSubmissionReview();
+        }
+
+        init();
     </script>
 </body>
 </html>

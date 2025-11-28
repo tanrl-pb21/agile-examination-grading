@@ -5,7 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Submissions - Student Portal</title>
     <link rel="stylesheet" href="../static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios@latest/dist/axios.min.js"></script>
 </head>
+<style>
+    .submission-card {
+    padding: 16px 20px;
+    border-radius: 14px;
+    min-height: 220px; 
+
+}
+
+.submission-score-section {
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.submission-score-large {
+    font-size: 26px;
+    font-weight: 700;
+}
+
+.submission-score-label {
+    margin-top: 0px;
+    font-size: 12px;
+}
+
+.submission-percentage {
+    margin-top: -4px;
+    font-size: 16px;
+}
+
+.submission-header-format{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+</style>
 <body>
     <div class="submissions-container">
         <!-- Header -->
@@ -14,7 +49,7 @@
                 <h1 class="submissions-title">My Submissions</h1>
                 <p class="submissions-subtitle">View and review your exam submissions</p>
             </div>
-            <button class="btn-back-to-exams" onclick="window.location.href='studentExam.html'">
+            <button class="btn-back-to-exams" onclick="window.location.href='/studentExam'">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -31,51 +66,103 @@
             <input type="text" id="submissionsSearchInput" placeholder="Search by exam title or submission ID...">
         </div>
 
+        <!-- Loading State -->
+        <div id="loadingState" style="text-align: center; padding: 40px;">
+            <p>Loading submissions...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" style="text-align: center; padding: 40px; display: none;">
+            <p>No submissions found</p>
+        </div>
+
         <!-- Submissions Cards Grid -->
-        <div class="submissions-cards-grid" id="submissionsCardsContainer">
+        <div class="submissions-cards-grid" id="submissionsCardsContainer" style="display: none;">
             <!-- Submission cards will be generated here -->
         </div>
     </div>
 
     <script>
-        // Mock submissions data
-        const submissionsData = [
-            {
-                id: 1,
-                submissionId: 'sub2001',
-                examTitle: '3131',
-                examId: 'EXAM-3131',
-                date: '1/27/2025',
-                time: '10:30:00 PM',
-                score: '1/2',
-                percentage: '50.0%',
-                status: 'Graded'
-            },
-            {
-                id: 2,
-                submissionId: 'sub2002',
-                examTitle: 'Mathematics Final',
-                examId: 'MATH-FINAL-2025',
-                date: '1/26/2025',
-                time: '7:15:00 PM',
-                score: '1/2',
-                percentage: '50.0%',
-                status: 'Graded'
-            }
-        ];
-        
+        // REPLACE THIS WITH ACTUAL USER ID FROM SESSION/AUTH
+        const urlParams = new URLSearchParams(window.location.search);
+        const CURRENT_USER_ID = parseInt(urlParams.get('userId')) || 1;
 
-        // Render submission cards
+        let submissionsData = [];
+
+        // Fetch submissions from backend
+        async function loadSubmissions() {
+            try {
+                const response = await axios.get(`/submissions/student/${CURRENT_USER_ID}`);
+                submissionsData = response.data;
+                
+                console.log('Loaded submissions:', submissionsData);
+                
+                if (submissionsData.length === 0) {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('emptyState').style.display = 'block';
+                } else {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('submissionsCardsContainer').style.display = 'grid';
+                    renderSubmissionCards();
+                }
+            } catch (error) {
+                console.error('Error loading submissions:', error);
+                document.getElementById('loadingState').innerHTML = '<p style="color: #ef4444;">Failed to load submissions</p>';
+            }
+        }
+
+        // Format status for display
+        function formatStatus(status) {
+            const statusMap = {
+                'graded': 'Graded',
+                'submitted': 'Submitted',
+                'pending': 'Pending',
+                'in_progress': 'In Progress'
+            };
+            return statusMap[status] || status.charAt(0).toUpperCase() + status.slice(1);
+        }
+
+        // Add this helper function
+        function formatTime(timeString) {
+            if (!timeString) return 'N/A';
+            
+            // If time is in format HH:MM:SS, extract HH:MM
+            const parts = timeString.split(':');
+            if (parts.length >= 2) {
+                return `${parts[0]}:${parts[1]}`;
+            }
+            
+            return timeString;
+        }
+
+        // Then update the renderSubmissionCards function
         function renderSubmissionCards() {
             const container = document.getElementById('submissionsCardsContainer');
             container.innerHTML = submissionsData.map(submission => `
                 <div class="submission-card">
                     <div class="submission-card-header">
-                        <h3 class="submission-card-title">${submission.examTitle}</h3>
-                        <span class="submission-status-badge status-graded">${submission.status}</span>
+                        <h3 class="submission-card-title">${submission.exam_title}</h3>
+                        <span class="submission-status-badge status-${submission.status}">${
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      
+                                                      (submission.status)}</span>
                     </div>
-                    
-                    <p class="submission-id">ID: ${submission.submissionId}</p>
+                    <div class=submission-header-format>
+                    <p class="submission-id">ID: ${submission.submission_id}</p>
                     
                     <div class="submission-details">
                         <div class="submission-detail-item">
@@ -85,38 +172,62 @@
                                 <line x1="8" y1="2" x2="8" y2="6"/>
                                 <line x1="3" y1="10" x2="21" y2="10"/>
                             </svg>
-                            <span>${submission.date}</span>
+                            <span>${submission.date +"       "+ formatTime(submission.time) || 'N/A'}</span>
                         </div>
-                        <div class="submission-detail-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 6v6l4 2"/>
-                            </svg>
-                            <span>${submission.time}</span>
-                        </div>
+                    </div>    
                     </div>
+                    
 
                     <div class="submission-score-section">
-                        <div class="submission-score-large">${submission.score}</div>
-                        <div class="submission-score-label">Your Score</div>
-                        <div class="submission-percentage">${submission.percentage}</div>
+                        ${
+                            submission.status === "graded"
+                            ? `
+                                <div class="submission-score-large">${submission.score}</div>
+                                <div class="submission-score-label">Your Score</div>
+                                <div class="submission-percentage">${submission.percentage}</div>
+                            `
+                            : `
+                                <div class="submission-score-large">Pending</div>
+                                <div class="submission-score-label">Not graded yet</div>
+                                <div class="submission-percentage">-</div>
+                            `
+                        }
                     </div>
 
-                    <button class="btn-review-answers" onclick="viewSubmission(${submission.id})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                        </svg>
-                        Review Answers
-                    </button>
+
+                    ${submission.status === 'graded'
+                    ? `
+                        <button class="btn-review-answers" onclick="viewSubmission(${submission.id})">
+                            <svg ...></svg>
+                            Review Answers
+                        </button>
+                    `
+                    : `
+                    <div class="review-tooltip-wrapper">
+                        <button class="btn-review-answers review-disabled-btn">
+                            <svg ...></svg>
+                            Review Answers
+                        </button>
+                        <span class="tooltip">Review available after grading</span>
+                    </div>
+                    `
+                }
                 </div>
             `).join('');
         }
 
         // View submission details
         function viewSubmission(id) {
-            window.location.href = `studentSubmissionReview.html?id=${id}`;
+            const item = submissionsData.find(s => s.id === id);
+
+            if (item.status !== 'graded') {
+                console.warn("Blocked — submission not graded yet");
+                return; // Stop navigation
+            }
+
+            window.location.href = `/studentSubmissionReview?id=${id}&userId=${CURRENT_USER_ID}`;
         }
+
 
         // Search functionality
         document.getElementById('submissionsSearchInput').addEventListener('input', function(e) {
@@ -136,7 +247,7 @@
         });
 
         // Initialize
-        renderSubmissionCards();
+        loadSubmissions();
     </script>
 </body>
 </html>

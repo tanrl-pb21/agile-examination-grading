@@ -4,6 +4,7 @@ from src.services.course_service import CourseService
 router = APIRouter(prefix="/courses", tags=["Courses"])
 service = CourseService()
 
+
 @router.get("")
 def get_all_courses():
     """Get all courses"""
