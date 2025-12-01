@@ -9,6 +9,7 @@ from src.routers import course
 from src.routers import question
 from src.routers import submission
 from src.routers import grading
+from src.routers import take_exam
 
 app = FastAPI()
 app.include_router(exams.router)
@@ -16,6 +17,7 @@ app.include_router(course.router)
 app.include_router(question.router)
 app.include_router(submission.router)
 app.include_router(grading.router)
+app.include_router(take_exam.router)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

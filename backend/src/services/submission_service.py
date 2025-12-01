@@ -20,8 +20,46 @@ class SubmissionService:
 
     # ========== STUDENT SUBMISSION METHODS ==========
 
-    def get_student_submissions(self, user_id: int):
-        """Get all submissions for a specific student"""
+    @staticmethod
+    def calculate_percentage(score, total_marks):
+        if score is None or not total_marks or total_marks <= 0:
+            return None
+        return (score / total_marks) * 100
+
+    @staticmethod
+    def resolve_status(status: str):
+        """Derive the clean display status."""
+        if status is None:
+            return "submitted"
+
+        s = status.lower()
+        if s == "graded":
+            return "graded"
+        if s == "pending":
+            return "pending"
+        if s in ("submitted", ""):
+            return "submitted"
+
+        return s
+
+    @staticmethod
+    def format_date(d: date):
+        return d.strftime("%m/%d/%Y") if d else None
+
+    @staticmethod
+    def format_time(t: dt_time):
+        return str(t) if t else None
+
+    @staticmethod
+    def format_submission_id(submission_id: int):
+        return f"sub{submission_id}"
+
+    # =============================================================
+    # DATABASE HELPERS (MOCK IN UNIT TESTS)
+    # =============================================================
+
+    def _fetch_submissions(self, user_id: int):
+        """SQL Only — No logic here."""
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
@@ -40,77 +78,76 @@ class SubmissionService:
                     INNER JOIN exams e ON s.exam_code = e.id
                     WHERE s.user_id = %s
                     ORDER BY s.submission_date DESC, s.submission_time DESC;
-                """,
+                    """,
                     (user_id,),
                 )
+                return cur.fetchall()
 
-                submissions = cur.fetchall()
+    def _fetch_total_marks_batch(self, exam_ids: list[int]):
+        """Fetch total marks for all exams in ONE query."""
+        if not exam_ids:
+            return {}
 
-                result = []
-                for sub in submissions:
-                    # Calculate total marks for the exam
-                    cur.execute(
-                        """
-                        SELECT SUM(marks) as total_marks
-                        FROM question
-                        WHERE exam_id = %s;
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT exam_id, SUM(marks) AS total_marks
+                    FROM question
+                    WHERE exam_id = ANY(%s)
+                    GROUP BY exam_id
                     """,
-                        (sub["exam_code"],),
-                    )
+                    (exam_ids,),
+                )
+                rows = cur.fetchall()
 
-                    total_marks_result = cur.fetchone()
-                    total_marks = (
-                        total_marks_result["total_marks"] if total_marks_result else 0
-                    )
+        # return mapping { exam_id: total_marks }
+        return {row["exam_id"]: row["total_marks"] for row in rows}
+    # =============================================================
+    # MAIN ORCHESTRATOR
+    # =============================================================
 
-                    # Calculate percentage
-                    percentage = 0
-                    if total_marks and total_marks > 0 and sub["score"] is not None:
-                        percentage = (sub["score"] / total_marks) * 100
+    def get_student_submissions(self, user_id: int):
+        submissions = self._fetch_submissions(user_id)
 
-                    # Determine display status
-                    display_status = sub["status"]
-                    # Correct status logic (do NOT convert pending → graded)
-                    if sub["status"] == "graded":
-                        display_status = "graded"
-                    elif sub["status"] == "pending":
-                        display_status = "pending"
-                    elif sub["status"] in ("submitted", None, ""):
-                        display_status = "submitted"
-                    else:
-                        display_status = sub["status"]
+        # extract all exam_ids
+        exam_ids = [sub["exam_code"] for sub in submissions]
 
-                    result.append(
-                        {
-                            "id": sub["id"],
-                            "submission_id": f"sub{sub['id']}",
-                            "exam_title": sub["exam_title"],
-                            "exam_id": sub["exam_id"] or f"EXAM-{sub['exam_code']}",
-                            "date": (
-                                sub["submission_date"].strftime("%m/%d/%Y")
-                                if sub["submission_date"]
-                                else None
-                            ),
-                            "time": (
-                                str(sub["submission_time"])
-                                if sub["submission_time"]
-                                else None
-                            ),
-                            "score": (
-                                f"{sub['score']}/{total_marks}"
-                                if sub["score"] is not None
-                                else None
-                            ),
-                            "percentage": (
-                                f"{percentage:.1f}%"
-                                if sub["score"] is not None
-                                else None
-                            ),
-                            "status": display_status,
-                        }
-                    )
+        # batch load totals
+        total_map = self._fetch_total_marks_batch(exam_ids)
 
-                return result
+        result = []
+
+        for sub in submissions:
+            exam_code = sub["exam_code"]
+            total_marks = total_map.get(exam_code, 0)
+
+            percentage = self.calculate_percentage(sub["score"], total_marks)
+            display_status = self.resolve_status(sub["status"])
+
+            result.append({
+                "id": sub["id"],
+                "submission_id": self.format_submission_id(sub["id"]),
+                "exam_title": sub["exam_title"],
+                "exam_id": sub["exam_id"] or f"EXAM-{sub['exam_code']}",
+
+                "date": self.format_date(sub["submission_date"]),
+                "time": self.format_time(sub["submission_time"]),
+
+                "score": (
+                    f"{sub['score']}/{total_marks}"
+                    if sub["score"] is not None else None
+                ),
+
+                "percentage": (
+                    f"{percentage:.1f}%"
+                    if percentage is not None else None
+                ),
+
+                "status": display_status,
+            })
+
+        return result
 
     def get_submission_review(self, submission_id: int, user_id: int):
         """Get detailed review of a submission with questions and answers"""
