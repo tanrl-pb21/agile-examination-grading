@@ -264,7 +264,6 @@ class AnswerProcessor:
     
     def process_mcq(self, cursor, submission_id: int, question_id: int, 
                     selected_option_id: int, marks: int) -> Dict:
-
         correct_option_id = self.question_repo.get_correct_option_id(cursor, question_id)
         if not correct_option_id:
             raise ValueError(f"No correct answer set for question {question_id}")
