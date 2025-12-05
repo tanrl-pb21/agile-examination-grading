@@ -222,6 +222,7 @@ def step_response_has_exams(context: ExamContext) -> None:
     print(f"✓ Response contains {len(data)} exam(s)")
 
 
+
 @bdd_then("each available exam is currently open")
 def step_check_available_timing(context: ExamContext) -> None:
     """Verify each available exam is within its time window."""
