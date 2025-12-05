@@ -649,3 +649,206 @@ class ExamService:
         print(f"✅ Exam {exam_id} deleted")
         return row
 
+
+    def search_exams_by_code(self, exam_code: str):
+        """
+        Search exams by exam code (case-insensitive, exact match).
+        Returns exams matching the exact exam code.
+        """
+        if not exam_code or len(exam_code.strip()) == 0:
+            raise ValueError("Search term is required")
+        
+        exam_code = exam_code.strip()
+        
+        sql = """
+            SELECT id, title, exam_code, course, date, start_time, end_time, duration, status
+            FROM exams
+            WHERE LOWER(exam_code) = LOWER(%s)
+            ORDER BY date DESC, start_time DESC;
+        """
+        
+        try:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(sql, (exam_code,))
+                    rows = cur.fetchall()
+            
+            # Convert time objects to strings
+            if rows:
+                for row in rows:
+                    if row["start_time"] and not isinstance(row["start_time"], str):
+                        row["start_time"] = row["start_time"].strftime("%H:%M")
+                    if row["end_time"] and not isinstance(row["end_time"], str):
+                        row["end_time"] = row["end_time"].strftime("%H:%M")
+            
+            return rows if rows else []
+            
+        except Exception as e:
+            print(f"ERROR in search_exams_by_code: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+
+    def search_student_exams_by_course(self, student_id: int, course_name: str) -> list:
+        """
+        Search student's exams by course name (case-insensitive, partial match).
+        Returns exams for courses where name contains the search term.
+        """
+        if not course_name or len(course_name.strip()) == 0:
+            raise ValueError("Course name is required")
+        
+        if student_id <= 0:
+            raise ValueError("Valid student ID is required")
+        
+        course_name = course_name.strip()
+        
+        sql = """
+            SELECT DISTINCT 
+                e.id, 
+                e.title, 
+                e.exam_code, 
+                e.course,
+                c.course_name,
+                c.course_code,
+                e.date, 
+                e.start_time, 
+                e.end_time, 
+                e.duration, 
+                e.status
+            FROM exams e
+            INNER JOIN "studentCourse" sc ON e.course = sc.course_id
+            INNER JOIN course c ON e.course = c.id
+            WHERE 
+                sc.student_id = %s
+                AND LOWER(c.course_name) LIKE LOWER(%s)
+            ORDER BY e.date DESC, e.start_time DESC
+            LIMIT 100;
+        """
+        
+        try:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(sql, (student_id, f"%{course_name}%"))
+                    rows = cur.fetchall()
+            
+            # Convert time objects to strings
+            if rows:
+                for row in rows:
+                    if row["start_time"] and not isinstance(row["start_time"], str):
+                        row["start_time"] = row["start_time"].strftime("%H:%M")
+                    if row["end_time"] and not isinstance(row["end_time"], str):
+                        row["end_time"] = row["end_time"].strftime("%H:%M")
+            
+            return rows if rows else []
+            
+        except Exception as e:
+            print(f"ERROR in search_student_exams_by_course: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+
+    def filter_exams_by_status(self, status: str) -> list:
+        """
+        Filter all exams by status (scheduled, completed, cancelled).
+        Returns all exams with the specified status, ordered by date.
+        """
+        valid_statuses = ["scheduled", "completed", "cancelled"]
+        
+        # Convert to lowercase for comparison
+        if not status or status.strip().lower() not in valid_statuses:
+            raise ValueError(f"Status must be one of: {', '.join(valid_statuses)}")
+        
+        status = status.strip().lower()
+        
+        sql = """
+            SELECT id, title, exam_code, course, date, start_time, end_time, duration, status
+            FROM exams
+            WHERE LOWER(status) = LOWER(%s)
+            ORDER BY date DESC, start_time DESC
+            LIMIT 1000;
+        """
+        
+        try:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(sql, (status,))
+                    rows = cur.fetchall()
+            
+            # Convert time objects to strings
+            if rows:
+                for row in rows:
+                    if row["start_time"] and not isinstance(row["start_time"], str):
+                        row["start_time"] = row["start_time"].strftime("%H:%M")
+                    if row["end_time"] and not isinstance(row["end_time"], str):
+                        row["end_time"] = row["end_time"].strftime("%H:%M")
+            
+            return rows if rows else []
+            
+        except Exception as e:
+            print(f"ERROR in filter_exams_by_status: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+
+    def filter_student_exams_by_status(self, student_id: int, status: str) -> list:
+        """
+        Filter a student's exams by status (scheduled, completed, cancelled).
+        Returns exams for enrolled courses with the specified status.
+        """
+        valid_statuses = ["scheduled", "completed", "cancelled"]
+        
+        if student_id <= 0:
+            raise ValueError("Valid student ID is required")
+        
+        if not status or status.strip() not in valid_statuses:
+            raise ValueError(f"Status must be one of: {', '.join(valid_statuses)}")
+        
+        status = status.strip()
+        
+        sql = """
+            SELECT DISTINCT 
+                e.id, 
+                e.title, 
+                e.exam_code, 
+                e.course,
+                c.course_name,
+                c.course_code,
+                e.date, 
+                e.start_time, 
+                e.end_time, 
+                e.duration, 
+                e.status
+            FROM exams e
+            INNER JOIN "studentCourse" sc ON e.course = sc.course_id
+            INNER JOIN course c ON e.course = c.id
+            WHERE 
+                sc.student_id = %s
+                AND LOWER(e.status) = LOWER(%s)
+            ORDER BY e.date DESC, e.start_time DESC
+            LIMIT 1000;
+        """
+        
+        try:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(sql, (student_id, status))
+                    rows = cur.fetchall()
+            
+            # Convert time objects to strings
+            if rows:
+                for row in rows:
+                    if row["start_time"] and not isinstance(row["start_time"], str):
+                        row["start_time"] = row["start_time"].strftime("%H:%M")
+                    if row["end_time"] and not isinstance(row["end_time"], str):
+                        row["end_time"] = row["end_time"].strftime("%H:%M")
+            
+            return rows if rows else []
+            
+        except Exception as e:
+            print(f"ERROR in filter_student_exams_by_status: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return []
