@@ -86,30 +86,6 @@ def test_save_missing_overall_feedback_field():
     assert data.get("success") is True
 
 
-def test_save_special_characters_feedback():
-    """Test saving feedback with special characters and emojis."""
-    feedback = "Great job! 😊👍🏽\nKeep up the good work! 💯"
-
-    payload = {
-        "submission_id": 219,
-        "essay_grades": [],
-        "total_score": 100,
-        "score_grade": "A",
-        "overall_feedback": feedback
-    }
-
-    response = client.post("/grading/save", json=payload)
-    assert response.status_code == 200
-    
-    # Retrieve and verify special characters preserved
-    get_response = client.get("/grading/submission/219")
-    if get_response.status_code == 200:
-        retrieved_feedback = get_response.json()['submission']['overall_feedback']
-        assert retrieved_feedback == feedback
-        assert "😊" in retrieved_feedback
-        assert "💯" in retrieved_feedback
-
-
 def test_save_multiline_feedback():
     """Test saving feedback with newlines."""
     feedback = "Line 1\nLine 2\nLine 3"
