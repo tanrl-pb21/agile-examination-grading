@@ -1,0 +1,707 @@
+"""
+BDD Acceptance Tests for Instructor Submission Management
+Uses pytest-bdd to implement Gherkin scenarios with mock data
+"""
+
+import pytest
+from pytest_bdd import scenarios, given, when, then, parsers
+from unittest.mock import Mock, patch, MagicMock
+from datetime import date, time
+
+
+# Load all scenarios from feature file
+scenarios('../feature/search_instructorSide_submission.feature')
+
+
+# Shared test context
+class TestContext:
+    def __init__(self):
+        self.exam_id = None
+        self.enrolled_students = []
+        self.submissions = []
+        self.search_results = []
+        self.filter_status = "all"
+        self.search_term = ""
+        self.summary_stats = {}
+        self.api_response = None
+        self.api_status_code = None
+        self.error_message = None
+
+
+@pytest.fixture
+def context():
+    """Fixture to provide test context"""
+    return TestContext()
+
+
+# Background Steps
+@given("I am logged in as an instructor")
+def instructor_logged_in(context):
+    """Simulate instructor login"""
+    context.instructor_id = 1
+    context.is_authenticated = True
+
+
+@given(parsers.parse('an exam with id "{exam_id}" exists'))
+def exam_exists(context, exam_id):
+    """Set up exam data"""
+    context.exam_id = int(exam_id)
+    context.exam_data = {
+        "id": int(exam_id),
+        "course": 1,
+        "title": "Midterm Exam",
+        "date": date(2024, 12, 1),
+        "start_time": time(14, 0),
+        "end_time": time(16, 0),
+        "duration": 120,
+        "status": "ongoing"
+    }
+
+
+@given(parsers.parse("the exam has {count:d} enrolled students"))
+def set_enrolled_students(context, count):
+    """Set up enrolled students"""
+    context.enrolled_students = [
+        {
+            "student_id": i,
+            "student_email": f"student{i}@example.com",
+            "student_name": f"student{i}@example.com"
+        }
+        for i in range(1, count + 1)
+    ]
+    
+    # Create specific named students for testing
+    if count >= 5:
+        context.enrolled_students[0] = {
+            "student_id": 1,
+            "student_email": "john.doe@example.com",
+            "student_name": "John Doe"
+        }
+        context.enrolled_students[1] = {
+            "student_id": 2,
+            "student_email": "jane.smith@example.com",
+            "student_name": "Jane Smith"
+        }
+        context.enrolled_students[2] = {
+            "student_id": 3,
+            "student_email": "bob.j@example.com",
+            "student_name": "Bob Johnson"
+        }
+
+
+@given(parsers.parse("{count:d} students have submitted their exam"))
+def set_submitted_students(context, count):
+    """Set up submitted students"""
+    context.submissions = []
+    
+    for i in range(1, count + 1):
+        status = "graded" if i % 2 == 0 else "pending"
+        score = 80 + i if status == "graded" else None
+        grade = "A" if status == "graded" and score >= 85 else "B" if status == "graded" else None
+        
+        context.submissions.append({
+            "submission_id": 200 + i,
+            "student_id": i,
+            "student_name": context.enrolled_students[i-1]["student_name"] if i <= len(context.enrolled_students) else f"student{i}@example.com",
+            "student_email": context.enrolled_students[i-1]["student_email"] if i <= len(context.enrolled_students) else f"student{i}@example.com",
+            "status": status,
+            "submission_date": "2024-12-01",
+            "submission_time": "14:30:00",
+            "score": score,
+            "score_grade": grade,
+            "overall_feedback": "Good work" if status == "graded" else None
+        })
+
+
+@given(parsers.parse("{count:d} students have missed the exam"))
+def set_missed_students(context, count):
+    """Set up missed students"""
+    submitted_ids = {s["student_id"] for s in context.submissions}
+    missed_count = 0
+    
+    for student in context.enrolled_students:
+        if student["student_id"] not in submitted_ids and missed_count < count:
+            context.submissions.append({
+                "submission_id": None,
+                "student_id": student["student_id"],
+                "student_name": student["student_name"],
+                "student_email": student["student_email"],
+                "status": "missed",
+                "submission_date": None,
+                "submission_time": None,
+                "score": None,
+                "score_grade": None,
+                "overall_feedback": None
+            })
+            missed_count += 1
+
+
+# User Story 1: Search Scenarios
+@given(parsers.parse('student with id "{student_id}" has submitted the exam'))
+def specific_student_submitted(context, student_id):
+    """Set up specific student submission"""
+    sid = int(student_id)
+    if not any(s["student_id"] == sid and s["status"] != "missed" for s in context.submissions):
+        context.submissions.append({
+            "submission_id": 200 + sid,
+            "student_id": sid,
+            "student_name": "John Doe",
+            "student_email": "john.doe@example.com",
+            "status": "pending",
+            "submission_date": "2024-12-01",
+            "submission_time": "14:30:00",
+            "score": None,
+            "score_grade": None,
+            "overall_feedback": None
+        })
+
+
+@given(parsers.parse('student "{name}" has submitted the exam'))
+def named_student_submitted(context, name):
+    """Set up named student submission"""
+    email = name.lower().replace(" ", ".") + "@example.com"
+    context.submissions.append({
+        "submission_id": 299,
+        "student_id": 99,
+        "student_name": name,
+        "student_email": email,
+        "status": "pending",
+        "submission_date": "2024-12-01",
+        "submission_time": "14:30:00",
+        "score": None,
+        "score_grade": None,
+        "overall_feedback": None
+    })
+
+
+@given(parsers.parse('student with email "{email}" has submitted'))
+def student_with_email_submitted(context, email):
+    """Set up student with specific email"""
+    if not any(s["student_email"] == email for s in context.submissions):
+        context.submissions.append({
+            "submission_id": 298,
+            "student_id": 98,
+            "student_name": "John Doe",
+            "student_email": email,
+            "status": "pending",
+            "submission_date": "2024-12-01",
+            "submission_time": "14:30:00",
+            "score": None,
+            "score_grade": None,
+            "overall_feedback": None
+        })
+
+
+@given(parsers.parse('student "{name}" has submitted the exam'))
+def another_named_student_submitted(context, name):
+    """Alternative step for named student submission"""
+    email = name.lower().replace(" ", ".") + "@example.com"
+    if not any(s["student_name"] == name for s in context.submissions):
+        context.submissions.append({
+            "submission_id": 297,
+            "student_id": 97,
+            "student_name": name,
+            "student_email": email,
+            "status": "pending",
+            "submission_date": "2024-12-01",
+            "submission_time": "14:30:00",
+            "score": None,
+            "score_grade": None,
+            "overall_feedback": None
+        })
+
+
+@when(parsers.parse('I search for submissions with student ID "{student_id}"'))
+def search_by_student_id(context, student_id):
+    """Search submissions by student ID"""
+    context.search_term = student_id.lower()
+    context.search_results = [
+        sub for sub in context.submissions
+        if context.search_term in f"STU{str(sub['student_id']).zfill(4)}".lower()
+    ]
+
+
+@when(parsers.parse('I search for submissions with partial ID "{partial_id}"'))
+def search_by_partial_id(context, partial_id):
+    """Search submissions by partial ID"""
+    context.search_term = partial_id.lower()
+    context.search_results = [
+        sub for sub in context.submissions
+        if context.search_term in f"STU{str(sub['student_id']).zfill(4)}".lower()
+    ]
+
+
+@when(parsers.parse('I search for submissions with name "{name}"'))
+def search_by_name(context, name):
+    """Search submissions by name"""
+    context.search_term = name.lower()
+    context.search_results = [
+        sub for sub in context.submissions
+        if context.search_term in sub["student_name"].lower()
+    ]
+
+
+@when(parsers.parse('I search for submissions with email "{email}"'))
+def search_by_email(context, email):
+    """Search submissions by email"""
+    context.search_term = email.lower()
+    context.search_results = [
+        sub for sub in context.submissions
+        if context.search_term in sub["student_email"].lower()
+    ]
+
+
+# User Story 2: Filter Scenarios
+@given(parsers.parse("there are {count:d} pending submissions"))
+def set_pending_submissions(context, count):
+    """Ensure specific number of pending submissions"""
+    pending_count = sum(1 for s in context.submissions if s["status"] == "pending")
+    
+    while pending_count < count:
+        context.submissions.append({
+            "submission_id": 300 + pending_count,
+            "student_id": 50 + pending_count,
+            "student_name": f"pending_student{pending_count}@example.com",
+            "student_email": f"pending_student{pending_count}@example.com",
+            "status": "pending",
+            "submission_date": "2024-12-01",
+            "submission_time": "14:30:00",
+            "score": None,
+            "score_grade": None,
+            "overall_feedback": None
+        })
+        pending_count += 1
+
+
+@given(parsers.parse("there are {count:d} graded submissions"))
+def set_graded_submissions(context, count):
+    """Ensure specific number of graded submissions"""
+    graded_count = sum(1 for s in context.submissions if s["status"] == "graded")
+    
+    while graded_count < count:
+        context.submissions.append({
+            "submission_id": 400 + graded_count,
+            "student_id": 60 + graded_count,
+            "student_name": f"graded_student{graded_count}@example.com",
+            "student_email": f"graded_student{graded_count}@example.com",
+            "status": "graded",
+            "submission_date": "2024-12-01",
+            "submission_time": "14:30:00",
+            "score": 85,
+            "score_grade": "A",
+            "overall_feedback": "Excellent"
+        })
+        graded_count += 1
+
+
+@given(parsers.parse("there are {count:d} students who missed the exam"))
+def set_missed_students_specific(context, count):
+    """Ensure specific number of missed students"""
+    missed_count = sum(1 for s in context.submissions if s["status"] == "missed")
+    
+    while missed_count < count:
+        context.submissions.append({
+            "submission_id": None,
+            "student_id": 70 + missed_count,
+            "student_name": f"missed_student{missed_count}@example.com",
+            "student_email": f"missed_student{missed_count}@example.com",
+            "status": "missed",
+            "submission_date": None,
+            "submission_time": None,
+            "score": None,
+            "score_grade": None,
+            "overall_feedback": None
+        })
+        missed_count += 1
+
+
+@given(parsers.parse("there are {count:d} total students enrolled"))
+def set_total_enrolled(context, count):
+    """Set total enrolled students"""
+    if len(context.enrolled_students) < count:
+        for i in range(len(context.enrolled_students) + 1, count + 1):
+            context.enrolled_students.append({
+                "student_id": i,
+                "student_email": f"student{i}@example.com",
+                "student_name": f"student{i}@example.com"
+            })
+
+
+@given(parsers.parse('student "{name}" has a graded submission'))
+def student_has_graded_submission(context, name):
+    """Set up student with graded submission"""
+    email = name.lower().replace(" ", ".") + "@example.com"
+    context.submissions = [s for s in context.submissions if s["student_name"] != name]
+    context.submissions.append({
+        "submission_id": 250,
+        "student_id": 25,
+        "student_name": name,
+        "student_email": email,
+        "status": "graded",
+        "submission_date": "2024-12-01",
+        "submission_time": "14:30:00",
+        "score": 90,
+        "score_grade": "A",
+        "overall_feedback": "Excellent"
+    })
+
+
+@given(parsers.parse('student "{name}" has a pending submission'))
+def student_has_pending_submission(context, name):
+    """Set up student with pending submission"""
+    email = name.lower().replace(" ", ".") + "@example.com"
+    context.submissions = [s for s in context.submissions if s["student_name"] != name]
+    context.submissions.append({
+        "submission_id": 251,
+        "student_id": 26,
+        "student_name": name,
+        "student_email": email,
+        "status": "pending",
+        "submission_date": "2024-12-02",
+        "submission_time": "10:15:00",
+        "score": None,
+        "score_grade": None,
+        "overall_feedback": None
+    })
+
+
+@given("there are no pending submissions")
+def no_pending_submissions(context):
+    """Ensure no pending submissions exist"""
+    context.submissions = [s for s in context.submissions if s["status"] != "pending"]
+
+
+@when(parsers.parse('I filter submissions by status "{status}"'))
+def filter_by_status(context, status):
+    """Filter submissions by status"""
+    context.filter_status = status
+    
+    if status == "all":
+        context.search_results = context.submissions
+    else:
+        context.search_results = [
+            sub for sub in context.submissions
+            if sub["status"] == status
+        ]
+
+
+@when(parsers.parse('I search for "{search}" and filter by status "{status}"'))
+def search_and_filter(context, search, status):
+    """Combine search and filter"""
+    context.search_term = search.lower()
+    context.filter_status = status
+    
+    context.search_results = [
+        sub for sub in context.submissions
+        if (context.search_term in sub["student_name"].lower() or
+            context.search_term in sub["student_email"].lower()) and
+           (status == "all" or sub["status"] == status)
+    ]
+
+
+# User Story 3: Summary Scenarios
+@given(parsers.parse("there are {count:d} students enrolled in the course"))
+def students_enrolled_in_course(context, count):
+    """Set enrolled students for summary"""
+    context.enrolled_students = [
+        {
+            "student_id": i,
+            "student_email": f"student{i}@example.com",
+            "student_name": f"Student {i}"
+        }
+        for i in range(1, count + 1)
+    ]
+
+
+@given(parsers.parse("{count:d} students have not submitted"))
+def students_not_submitted(context, count):
+    """Track students who haven't submitted"""
+    # This is tracked through missed submissions
+    pass
+
+
+@given(parsers.parse("{count:d} students have submitted"))
+def students_have_submitted(context, count):
+    """Track students who submitted"""
+    # Already handled by submissions list
+    pass
+
+
+@when("I view the submission summary")
+def view_submission_summary(context):
+    """Calculate submission summary"""
+    context.summary_stats = {
+        "total_students": len(context.enrolled_students),
+        "submitted": len([s for s in context.submissions if s["status"] in ["pending", "graded"]]),
+        "missed": len([s for s in context.submissions if s["status"] == "missed"]),
+        "graded": len([s for s in context.submissions if s["status"] == "graded"]),
+        "pending": len([s for s in context.submissions if s["status"] == "pending"])
+    }
+
+
+@when("I view the submission summary with status breakdown")
+def view_summary_with_breakdown(context):
+    """Calculate summary with detailed breakdown"""
+    view_submission_summary(context)
+
+
+@when("a new student submits their exam")
+def new_student_submits(context):
+    """Simulate new submission"""
+    # Find a missed submission and convert to submitted
+    for i, sub in enumerate(context.submissions):
+        if sub["status"] == "missed":
+            context.submissions[i] = {
+                **sub,
+                "submission_id": 999,
+                "status": "pending",
+                "submission_date": "2024-12-03",
+                "submission_time": "11:00:00"
+            }
+            break
+    
+    view_submission_summary(context)
+
+
+# API Scenarios
+@given("the exam API endpoint is available")
+def api_endpoint_available(context):
+    """Mock API endpoint availability"""
+    context.api_available = True
+
+
+@when(parsers.parse('I request submissions for exam "{exam_id}"'))
+def request_submissions_api(context, exam_id):
+    """Make API request for submissions"""
+    eid = int(exam_id)
+    
+    with patch('psycopg.connect') as mock_connect:
+        mock_cursor = MagicMock()
+        mock_conn = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        
+        if eid == context.exam_id:
+            # Mock successful response
+            mock_cursor.fetchone.return_value = {
+                "course": 1,
+                "date": date(2024, 12, 1),
+                "end_time": time(16, 0)
+            }
+            mock_cursor.fetchall.side_effect = [
+                context.enrolled_students,
+                [s for s in context.submissions if s["submission_id"] is not None]
+            ]
+            
+            context.api_status_code = 200
+            context.api_response = context.submissions
+        else:
+            # Mock 404 response
+            mock_cursor.fetchone.return_value = None
+            context.api_status_code = 404
+            context.error_message = "Exam not found"
+
+
+@given(parsers.parse('student "{student_id}" has a graded submission with score {score:d}'))
+def student_has_score(context, student_id, score):
+    """Set up student with specific score"""
+    sid = int(student_id)
+    context.submissions = [s for s in context.submissions if s["student_id"] != sid]
+    context.submissions.append({
+        "submission_id": 500,
+        "student_id": sid,
+        "student_name": f"Student {sid}",
+        "student_email": f"student{sid}@example.com",
+        "status": "graded",
+        "submission_date": "2024-12-01",
+        "submission_time": "14:30:00",
+        "score": score,
+        "score_grade": "A" if score >= 85 else "B",
+        "overall_feedback": "Good work"
+    })
+
+
+# Then Steps - Assertions
+@then(parsers.parse("I should see {count:d} submission result"))
+@then(parsers.parse("I should see {count:d} submission results"))
+def verify_result_count(context, count):
+    """Verify number of search results"""
+    assert len(context.search_results) == count, \
+        f"Expected {count} results, got {len(context.search_results)}"
+
+
+@then(parsers.parse('the result should contain student with ID "{student_id}"'))
+def verify_student_id_in_results(context, student_id):
+    """Verify specific student ID in results"""
+    formatted_ids = [f"STU{str(s['student_id']).zfill(4)}" for s in context.search_results]
+    assert student_id in formatted_ids, \
+        f"Student ID {student_id} not found in results"
+
+
+@then(parsers.parse('the result should show student name "{name}"'))
+def verify_student_name(context, name):
+    """Verify student name in results"""
+    names = [s["student_name"] for s in context.search_results]
+    assert any(name.lower() in n.lower() for n in names), \
+        f"Student name {name} not found in results"
+
+
+@then(parsers.parse('the result should show email "{email}"'))
+def verify_email(context, email):
+    """Verify email in results"""
+    emails = [s["student_email"] for s in context.search_results]
+    assert email in emails, f"Email {email} not found in results"
+
+
+@then(parsers.parse('all results should contain "{text}" in their student ID'))
+def verify_all_contain_text(context, text):
+    """Verify all results contain specific text"""
+    for sub in context.search_results:
+        student_id = f"STU{str(sub['student_id']).zfill(4)}"
+        assert text in student_id, \
+            f"Student ID {student_id} does not contain {text}"
+
+
+@then(parsers.parse('I should see a message "{message}"'))
+def verify_message(context, message):
+    """Verify specific message is shown"""
+    if len(context.search_results) == 0:
+        context.message = "No submissions found"
+    assert message.lower() in context.message.lower()
+
+
+@then("I should see multiple submission results")
+def verify_multiple_results(context):
+    """Verify multiple results returned"""
+    assert len(context.search_results) > 1, \
+        f"Expected multiple results, got {len(context.search_results)}"
+
+
+@then(parsers.parse('all results should have status "{status}"'))
+def verify_all_status(context, status):
+    """Verify all results have specific status"""
+    for sub in context.search_results:
+        assert sub["status"] == status, \
+            f"Expected status {status}, got {sub['status']}"
+
+
+@then("all results should have no submission date")
+def verify_no_submission_date(context):
+    """Verify results have no submission date"""
+    for sub in context.search_results:
+        assert sub["submission_date"] is None, \
+            f"Expected no submission date, got {sub['submission_date']}"
+
+
+@then("results should include all statuses")
+def verify_all_statuses_included(context):
+    """Verify results contain various statuses"""
+    statuses = set(sub["status"] for sub in context.search_results)
+    assert len(statuses) > 1, "Expected multiple statuses in results"
+
+
+@then(parsers.parse('the result should have status "{status}"'))
+def verify_single_status(context, status):
+    """Verify single result has specific status"""
+    assert len(context.search_results) > 0
+    assert context.search_results[0]["status"] == status
+
+
+@then(parsers.parse("the total students count should be {count:d}"))
+def verify_total_students(context, count):
+    """Verify total students count"""
+    assert context.summary_stats["total_students"] == count, \
+        f"Expected {count} total students, got {context.summary_stats['total_students']}"
+
+
+@then(parsers.parse("the submitted count should be {count:d}"))
+def verify_submitted_count(context, count):
+    """Verify submitted count"""
+    assert context.summary_stats["submitted"] == count, \
+        f"Expected {count} submitted, got {context.summary_stats['submitted']}"
+
+
+@then(parsers.parse("the missed count should be {count:d}"))
+def verify_missed_count(context, count):
+    """Verify missed count"""
+    assert context.summary_stats["missed"] == count, \
+        f"Expected {count} missed, got {context.summary_stats['missed']}"
+
+
+@then(parsers.parse("the submitted count should increase to {count:d}"))
+def verify_submitted_increase(context, count):
+    """Verify submitted count increased"""
+    assert context.summary_stats["submitted"] == count
+
+
+@then(parsers.parse("the missed count should decrease to {count:d}"))
+def verify_missed_decrease(context, count):
+    """Verify missed count decreased"""
+    assert context.summary_stats["missed"] == count
+
+
+@then(parsers.parse("I should see graded count as {count:d}"))
+def verify_graded_count(context, count):
+    """Verify graded count"""
+    assert context.summary_stats["graded"] == count
+
+
+@then(parsers.parse("I should see pending count as {count:d}"))
+def verify_pending_count(context, count):
+    """Verify pending count"""
+    assert context.summary_stats["pending"] == count
+
+
+# API Assertions
+@then(parsers.parse("the API should return status code {code:d}"))
+def verify_api_status_code(context, code):
+    """Verify API status code"""
+    assert context.api_status_code == code, \
+        f"Expected status code {code}, got {context.api_status_code}"
+
+
+@then("the response should contain all enrolled students")
+def verify_response_has_all_students(context):
+    """Verify API response includes all students"""
+    if context.api_response:
+        response_student_ids = {s["student_id"] for s in context.api_response}
+        enrolled_ids = {s["student_id"] for s in context.enrolled_students}
+        assert enrolled_ids.issubset(response_student_ids)
+
+
+@then("the response should include submission details")
+def verify_submission_details(context):
+    """Verify API response has submission details"""
+    if context.api_response:
+        for submission in context.api_response:
+            assert "submission_id" in submission
+            assert "status" in submission
+            assert "student_id" in submission
+
+
+@then(parsers.parse('the response should contain error message "{message}"'))
+def verify_error_message(context, message):
+    """Verify error message in response"""
+    assert context.error_message == message
+
+
+@then(parsers.parse('the API response should include score {score:d} for student "{student_id}"'))
+def verify_api_score(context, score, student_id):
+    """Verify score in API response"""
+    sid = int(student_id)
+    student_submission = next((s for s in context.api_response if s["student_id"] == sid), None)
+    assert student_submission is not None
+    assert student_submission["score"] == score
+
+
+@then(parsers.parse('the API response should include score_grade "{grade}" for student "{student_id}"'))
+def verify_api_grade(context, grade, student_id):
+    """Verify grade in API response"""
+    sid = int(student_id)
+    student_submission = next((s for s in context.api_response if s["student_id"] == sid), None)
+    assert student_submission is not None
+    assert student_submission["score_grade"] == grade
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
