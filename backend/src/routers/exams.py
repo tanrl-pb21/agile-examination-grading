@@ -263,3 +263,158 @@ def delete_exam(exam_id: int):
         raise HTTPException(status_code=404, detail=str(e))
     
 
+@router.get("/search/title")
+def search_exams_by_title(title: str):
+    """
+    Search exams by title (case-insensitive, partial match).
+    
+    Query parameters:
+    - title (required): Search term to find in exam titles
+    
+    Example: GET /exams/search/title?title=midterm
+    """
+    try:
+        # Check for empty or whitespace-only string
+        if not title or not title.strip():
+            raise HTTPException(status_code=400, detail="Search term cannot be empty")
+        
+        exams = service.search_exams_by_title(title)
+        return [convert_time_to_string(exam) for exam in exams] if exams else []
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/search/code")
+def search_exams_by_code(exam_code: str):
+    """
+    Search exams by exam code (case-insensitive, exact match).
+    
+    Query parameters:
+    - exam_code (required): Exam code to search for
+    
+    Example: GET /exams/search/code?exam_code=CS101-MID
+    """
+    try:
+        # Check for empty or whitespace-only string
+        if not exam_code or not exam_code.strip():
+            raise HTTPException(status_code=400, detail="Exam code cannot be empty")
+        
+        exams = service.search_exams_by_code(exam_code)
+        return [convert_time_to_string(exam) for exam in exams] if exams else []
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/search/course")
+def search_student_exams_by_course(student_id: int, course_name: str):
+    """
+    Search student's exams by course name (case-insensitive, partial match).
+    
+    Query parameters:
+    - student_id (required): ID of the student
+    - course_name (required): Course name to search for
+    
+    Example: GET /exams/search/course?student_id=1&course_name=mathematics
+    """
+    try:
+        # Check for empty or whitespace-only string
+        if not course_name or not course_name.strip():
+            raise HTTPException(status_code=400, detail="Course name cannot be empty")
+        
+        if student_id <= 0:
+            raise HTTPException(status_code=400, detail="Valid student ID is required")
+        
+        exams = service.search_student_exams_by_course(student_id, course_name)
+        return [convert_time_to_string(exam) for exam in exams] if exams else []
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/filter/status")
+def filter_exams_by_status(status: str):
+    """
+    Filter exams by status (scheduled, completed, cancelled).
+    
+    Query parameters:
+    - status (required): Status filter (scheduled, completed, or cancelled)
+    
+    Example: GET /exams/filter/status?status=scheduled
+    """
+    try:
+        valid_statuses = ["scheduled", "completed", "cancelled"]
+        
+        # Check for empty or whitespace-only string
+        if not status or not status.strip():
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Status must be one of: {', '.join(valid_statuses)}"
+            )
+        
+        # Check if status is valid
+        if status.strip().lower() not in valid_statuses:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Status must be one of: {', '.join(valid_statuses)}"
+            )
+        
+        exams = service.filter_exams_by_status(status)
+        return [convert_time_to_string(exam) for exam in exams] if exams else []
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/filter/status/student")
+def filter_student_exams_by_status(student_id: int, status: str):
+    """
+    Filter a student's exams by status (scheduled, completed, cancelled).
+    
+    Query parameters:
+    - student_id (required): ID of the student
+    - status (required): Status filter (scheduled, completed, or cancelled)
+    
+    Example: GET /exams/filter/status/student?student_id=1&status=scheduled
+    """
+    try:
+        valid_statuses = ["scheduled", "completed", "cancelled"]
+        
+        if student_id <= 0:
+            raise HTTPException(status_code=400, detail="Valid student ID is required")
+        
+        # Check for empty or whitespace-only string
+        if not status or not status.strip():
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Status must be one of: {', '.join(valid_statuses)}"
+            )
+        
+        # Check if status is valid
+        if status.strip().lower() not in valid_statuses:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Status must be one of: {', '.join(valid_statuses)}"
+            )
+        
+        exams = service.filter_student_exams_by_status(student_id, status)
+        return [convert_time_to_string(exam) for exam in exams] if exams else []
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
