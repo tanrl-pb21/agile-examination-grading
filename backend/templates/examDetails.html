@@ -790,88 +790,118 @@ function transformSubmissions(submissions) {
 
 
         function renderQuestionStats() {
-            if (!currentExam) return;
-            const mcqCount = currentExam.questions.filter(q => q.type === 'mcq').length;
-            const essayCount = currentExam.questions.filter(q => q.type === 'essay').length;
-            const totalPoints = currentExam.questions.reduce((sum, q) => sum + q.points, 0);
-            document.getElementById('questionStats').innerHTML = `
-                <div class="stat-item"><span class="stat-dot blue"></span><span>MCQ Questions: <strong>${mcqCount}</strong></span></div>
-                <div class="stat-item"><span class="stat-dot purple"></span><span>Essay Questions: <strong>${essayCount}</strong></span></div>
-                <div class="stat-item"><svg viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Total Points: <strong>${totalPoints}</strong></span></div>
-                <div class="add-question-dropdown">
-                    <button class="btn-add-question" onclick="toggleDropdown(event)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Add Question
-                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                    <div class="dropdown-menu" id="dropdownMenu">
-                        <a href="#" class="dropdown-item" onclick="openMCQModal(event)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
-                            <div><span class="dropdown-title">Add MCQ</span><span class="dropdown-desc">Multiple choice question</span></div>
-                        </a>
-                        <a href="#" class="dropdown-item" onclick="openEssayModal(event)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            <div><span class="dropdown-title">Add Essay</span><span class="dropdown-desc">Essay question</span></div>
-                        </a>
-                    </div>
+        if (!currentExam) return;
+        const mcqCount = currentExam.questions.filter(q => q.type === 'mcq').length;
+        const essayCount = currentExam.questions.filter(q => q.type === 'essay').length;
+        const totalPoints = currentExam.questions.reduce((sum, q) => sum + q.points, 0);
+        
+        const hasExamStarted = checkIfExamStarted();
+        const addButtonDisabled = hasExamStarted;
+        const addButtonTitle = hasExamStarted ? 'Cannot add questions after exam starts' : 'Add Question';
+        
+        const warningMessage = hasExamStarted 
+        ? '<div class="exam-started-warning" style="color:#d97706; font-size:14px; margin-top:8px; padding:8px; background:#fef3c7; border-radius:4px;"><svg style="display:inline; margin-right:6px;" width="16" height="16" viewBox="0 0 24 24" fill="#d97706" stroke="#d97706"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>Exam has started - questions cannot be modified</div>'
+        : '';
+
+        document.getElementById('questionStats').innerHTML = `
+            <div class="stat-item"><span class="stat-dot blue"></span><span>MCQ Questions: <strong>${mcqCount}</strong></span></div>
+            <div class="stat-item"><span class="stat-dot purple"></span><span>Essay Questions: <strong>${essayCount}</strong></span></div>
+            <div class="stat-item"><svg viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Total Points: <strong>${totalPoints}</strong></span></div>
+            <div class="add-question-dropdown">
+                <button class="btn-add-question" onclick="${!addButtonDisabled ? 'toggleDropdown(event)' : ''}" ${addButtonDisabled ? 'disabled' : ''} title="${addButtonTitle}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Question
+                    <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <a href="#" class="dropdown-item" onclick="${!addButtonDisabled ? 'openMCQModal(event)' : 'return false;'}" ${addButtonDisabled ? 'style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                        <div><span class="dropdown-title">Add MCQ</span><span class="dropdown-desc">Multiple choice question</span></div>
+                    </a>
+                    <a href="#" class="dropdown-item" onclick="${!addButtonDisabled ? 'openEssayModal(event)' : 'return false;'}" ${addButtonDisabled ? 'style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <div><span class="dropdown-title">Add Essay</span><span class="dropdown-desc">Essay question</span></div>
+                    </a>
                 </div>
-            `;
+            </div>
+        `;
+        
+        // Style disabled button
+        if (addButtonDisabled) {
+            const addBtn = document.querySelector('.btn-add-question');
+            if (addBtn) {
+                addBtn.style.opacity = '0.5';
+                addBtn.style.cursor = 'not-allowed';
+            }
         }
+    }
 
 
         function renderQuestions() {
-            if (!currentExam) return;
-            const container = document.getElementById('questionsList');
-           
-            const isCompleted = currentExam.status === 'completed';
-           
-            if (currentExam.questions.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;">No questions added yet</div>';
-                return;
-            }
-           
-            container.innerHTML = currentExam.questions.map((q, index) => {
-                const editButton = isCompleted
-                    ? ''
-                    : `<button class="action-btn edit" onclick="editQuestion(${q.id}, '${q.type}')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`;
-               
-                if (q.type === 'mcq') {
-                    return `<div class="question-card">
-                        <div class="question-header">
-                            <div class="question-number">${index + 1}</div>
-                            <span class="question-type mcq">MCQ</span>
-                            <span class="question-points">${q.points} points</span>
-                            <div class="question-actions">
-                                ${editButton}
-                                <button class="action-btn delete" onclick="deleteQuestion(${q.id})" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                            </div>
-                        </div>
-                        <div class="question-content">
-                            <p class="question-text">${q.question}</p>
-                            <div class="options-list">
-                                ${q.options.map((opt, i) => `<div class="option ${i === q.correctAnswer ? 'correct' : ''}"><span class="option-radio ${i === q.correctAnswer ? 'checked' : ''}">${i === q.correctAnswer ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span><span>${opt}</span></div>`).join('')}
-                            </div>
-                        </div>
-                    </div>`;
-                } else {
-                    return `<div class="question-card">
-                        <div class="question-header">
-                            <div class="question-number">${index + 1}</div>
-                            <span class="question-type essay">Essay</span>
-                            <span class="question-points">${q.points} points</span>
-                            <div class="question-actions">
-                                ${editButton}
-                                <button class="action-btn delete" onclick="deleteQuestion(${q.id})" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                            </div>
-                        </div>
-                        <div class="question-content">
-                            <p class="question-text">${q.question}</p>
-                            ${q.rubric ? `<div class="rubric-box"><div class="rubric-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Rubric</span></div><p class="rubric-text">${q.rubric}</p></div>` : ''}
-                        </div>
-                    </div>`;
-                }
-            }).join('');
+        if (!currentExam) return;
+        const container = document.getElementById('questionsList');
+        
+        const isCompleted = currentExam.status === 'completed';
+        const hasExamStarted = checkIfExamStarted(); // Check if exam has started
+        
+        if (currentExam.questions.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;">No questions added yet</div>';
+            return;
         }
+        
+        container.innerHTML = currentExam.questions.map((q, index) => {
+            // Don't show edit button if:
+            // 1. Exam is completed OR
+            // 2. Exam has started
+            const showEditButton = !isCompleted && !hasExamStarted;
+            
+            const editButton = showEditButton
+                ? `<button class="action-btn edit" onclick="editQuestion(${q.id}, '${q.type}')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`
+                : '';
+            
+            if (q.type === 'mcq') {
+                return `<div class="question-card">
+                    <div class="question-header">
+                        <div class="question-number">${index + 1}</div>
+                        <span class="question-type mcq">MCQ</span>
+                        <span class="question-points">${q.points} points</span>
+                        <div class="question-actions">
+                            ${editButton}
+                            <button class="action-btn delete" onclick="${showEditButton ? `deleteQuestion(${q.id})` : ''}" ${!showEditButton ? 'disabled' : ''} title="${showEditButton ? 'Delete' : 'Cannot delete after exam starts'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        </div>
+                    </div>
+                    <div class="question-content">
+                        <p class="question-text">${q.question}</p>
+                        <div class="options-list">
+                            ${q.options.map((opt, i) => `<div class="option ${i === q.correctAnswer ? 'correct' : ''}"><span class="option-radio ${i === q.correctAnswer ? 'checked' : ''}">${i === q.correctAnswer ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span><span>${opt}</span></div>`).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            } else {
+                return `<div class="question-card">
+                    <div class="question-header">
+                        <div class="question-number">${index + 1}</div>
+                        <span class="question-type essay">Essay</span>
+                        <span class="question-points">${q.points} points</span>
+                        <div class="question-actions">
+                            ${editButton}
+                            <button class="action-btn delete" onclick="${showEditButton ? `deleteQuestion(${q.id})` : ''}" ${!showEditButton ? 'disabled' : ''} title="${showEditButton ? 'Delete' : 'Cannot delete after exam starts'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        </div>
+                    </div>
+                    <div class="question-content">
+                        <p class="question-text">${q.question}</p>
+                        ${q.rubric ? `<div class="rubric-box"><div class="rubric-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Rubric</span></div><p class="rubric-text">${q.rubric}</p></div>` : ''}
+                    </div>
+                </div>`;
+            }
+        }).join('');
+        
+        // Style disabled delete buttons
+        document.querySelectorAll('.action-btn.delete[disabled]').forEach(btn => {
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+        });
+    }
 
 
         function renderSubmissionStats() {
@@ -1031,6 +1061,25 @@ function transformSubmissions(submissions) {
             renderSubmissions();
         }
 
+        function checkIfExamStarted() {
+        if (!currentExam || !currentExam.date || !currentExam.startTime) {
+            return false;
+        }
+        
+        // Get current date and time
+        const now = new Date();
+        
+        // Parse exam date and start time
+        const [year, month, day] = currentExam.date.split('-');
+        const [hours, minutes] = currentExam.startTime.split(':');
+        
+        // Create exam start datetime
+        const examStartDateTime = new Date(year, month - 1, day, hours, minutes);
+        
+        // Check if current time is past exam start time
+        return now > examStartDateTime;
+    }
+
 
         function toggleDropdown(e) {
             e.stopPropagation();
@@ -1057,11 +1106,17 @@ function transformSubmissions(submissions) {
         function renderMCQOptions(count, editData = null) {
             const container = document.getElementById('mcqOptionsList');
             container.innerHTML = '';
-           
+            
             for (let i = 0; i < count; i++) {
+                let optionValue = '';
+                
+                // Get option value from editData if available
+                if (editData && editData.options[i]) {
+                    optionValue = editData.options[i];
+                }
+                
                 const isSelected = editData ? (i === editData.correctAnswer) : (i === selectedCorrectAnswer);
-                const optionValue = editData && editData.options[i] ? editData.options[i] : '';
-               
+                
                 const row = document.createElement('div');
                 row.className = 'option-input-row';
                 row.innerHTML = `
@@ -1073,22 +1128,49 @@ function transformSubmissions(submissions) {
                 `;
                 container.appendChild(row);
             }
-           
+            
             mcqOptionsCount = count;
             if (editData) {
                 selectedCorrectAnswer = editData.correctAnswer;
             }
+            
+            // Update select buttons to show correct selection
+            document.querySelectorAll('.option-select-btn').forEach((btn, i) => {
+                const isSelected = editData ? (i === editData.correctAnswer) : (i === selectedCorrectAnswer);
+                btn.classList.toggle('selected', isSelected);
+                btn.innerHTML = isSelected ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
+            });
         }
 
 
         function addOption() {
-            if (mcqOptionsCount >= 10) {
-                alert('Maximum 10 options allowed');
-                return;
-            }
-            mcqOptionsCount++;
-            renderMCQOptions(mcqOptionsCount);
+        if (mcqOptionsCount >= 10) {
+            alert('Maximum 10 options allowed');
+            return;
         }
+        
+        // Save current values before re-rendering
+        const currentValues = [];
+        for (let i = 0; i < mcqOptionsCount; i++) {
+            const input = document.getElementById(`mcqOption${i + 1}`);
+            if (input) {
+                currentValues.push(input.value);
+            }
+        }
+        
+        // Add empty value for the new option
+        currentValues.push('');
+        
+        // Update count and re-render
+        mcqOptionsCount++;
+        renderMCQOptions(mcqOptionsCount);
+        
+        // Restore previous values
+        currentValues.forEach((val, i) => {
+            const input = document.getElementById(`mcqOption${i + 1}`);
+            if (input) input.value = val;
+        });
+    }
 
 
         function removeOption(index) {
@@ -1163,49 +1245,55 @@ function transformSubmissions(submissions) {
 
 
         async function editQuestion(id, type) {
-            if (currentExam.status === 'completed') {
-                alert('Cannot edit questions for completed exams');
-                return;
-            }
-           
-            try {
-                const response = await axios.get(`/questions/${id}`);
-                const question = response.data;
-               
-                if (type === 'mcq') {
-                    document.getElementById('mcqEditId').value = id;
-                    document.getElementById('mcqQuestion').value = question.question_text;
-                    document.getElementById('mcqPoints').value = question.marks;
-                   
-                    const correctIndex = question.options.findIndex(opt => opt.is_correct);
-                    const optionsData = {
-                        options: question.options.map(opt => opt.option_text),
-                        correctAnswer: correctIndex
-                    };
-                   
-                    renderMCQOptions(question.options.length, optionsData);
-                   
-                    document.getElementById('mcqModalTitle').textContent = 'Edit MCQ Question';
-                    document.querySelector('#mcqModal .modal-title-group p').textContent = 'Update multiple choice question';
-                    document.getElementById('mcqSubmitBtn').textContent = 'Update Question';
-                    document.getElementById('mcqModal').classList.add('active');
-                } else {
-                    document.getElementById('essayEditId').value = id;
-                    document.getElementById('essayQuestion').value = question.question_text;
-                    document.getElementById('essayPoints').value = question.marks;
-                    document.getElementById('essayRubric').value = question.rubric || '';
-                    document.getElementById('essayReferenceAnswer').value = question.reference_answer || '';
-                   
-                    document.getElementById('essayModalTitle').textContent = 'Edit Essay Question';
-                    document.querySelector('#essayModal .modal-title-group p').textContent = 'Update essay question';
-                    document.getElementById('essaySubmitBtn').textContent = 'Update Question';
-                    document.getElementById('essayModal').classList.add('active');
-                }
-            } catch (error) {
-                console.error('Error loading question:', error);
-                alert('Failed to load question: ' + (error.response?.data?.detail || error.message));
-            }
+        // Check if exam has started
+        if (checkIfExamStarted()) {
+            alert('Cannot edit questions after the exam has started');
+            return;
         }
+        
+        if (currentExam.status === 'completed') {
+            alert('Cannot edit questions for completed exams');
+            return;
+        }
+        
+        try {
+            const response = await axios.get(`/questions/${id}`);
+            const question = response.data;
+            
+            if (type === 'mcq') {
+                document.getElementById('mcqEditId').value = id;
+                document.getElementById('mcqQuestion').value = question.question_text;
+                document.getElementById('mcqPoints').value = question.marks;
+                
+                const correctIndex = question.options.findIndex(opt => opt.is_correct);
+                const optionsData = {
+                    options: question.options.map(opt => opt.option_text),
+                    correctAnswer: correctIndex
+                };
+                
+                renderMCQOptions(question.options.length, optionsData);
+                
+                document.getElementById('mcqModalTitle').textContent = 'Edit MCQ Question';
+                document.querySelector('#mcqModal .modal-title-group p').textContent = 'Update multiple choice question';
+                document.getElementById('mcqSubmitBtn').textContent = 'Update Question';
+                document.getElementById('mcqModal').classList.add('active');
+            } else {
+                document.getElementById('essayEditId').value = id;
+                document.getElementById('essayQuestion').value = question.question_text;
+                document.getElementById('essayPoints').value = question.marks;
+                document.getElementById('essayRubric').value = question.rubric || '';
+                document.getElementById('essayReferenceAnswer').value = question.reference_answer || '';
+                
+                document.getElementById('essayModalTitle').textContent = 'Edit Essay Question';
+                document.querySelector('#essayModal .modal-title-group p').textContent = 'Update essay question';
+                document.getElementById('essaySubmitBtn').textContent = 'Update Question';
+                document.getElementById('essayModal').classList.add('active');
+            }
+        } catch (error) {
+            console.error('Error loading question:', error);
+            alert('Failed to load question: ' + (error.response?.data?.detail || error.message));
+        }
+    }
 
 
         function closeAllModals() {
@@ -1300,20 +1388,26 @@ function transformSubmissions(submissions) {
 
 
         async function deleteQuestion(id) {
-            if (!confirm('Are you sure you want to delete this question?')) {
-                return;
-            }
-           
-            try {
-                await axios.delete(`/questions/${id}`);
-                showSuccessMessage('Question deleted successfully!');
-                await loadExamData();
-               
-            } catch (error) {
-                console.error('Error deleting question:', error);
-                alert('Failed to delete question: ' + (error.response?.data?.detail || error.message));
-            }
+        // Check if exam has started
+        if (checkIfExamStarted()) {
+            alert('Cannot delete questions after the exam has started');
+            return;
         }
+        
+        if (!confirm('Are you sure you want to delete this question?')) {
+            return;
+        }
+        
+        try {
+            await axios.delete(`/questions/${id}`);
+            showSuccessMessage('Question deleted successfully!');
+            await loadExamData();
+            
+        } catch (error) {
+            console.error('Error deleting question:', error);
+            alert('Failed to delete question: ' + (error.response?.data?.detail || error.message));
+        }
+    }
 
 
         function goToGrading(submissionId) {
