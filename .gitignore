@@ -72,3 +72,5 @@ Thumbs.db
 openapi.json
 
 *:Zone.Identifier
+.coverage
+coverage.xml
