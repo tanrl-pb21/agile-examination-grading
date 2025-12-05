@@ -6,9 +6,7 @@ on:
 
 jobs:
   backend-tests:
-    name: Run All Tests (Unit + Acceptance + Coverage)
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -16,43 +14,38 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Install backend dependencies once
-      - name: Install backend dependencies
+      - name: Install dependencies
         run: |
           cd backend
-          pip install --upgrade pip
           pip install -e ".[dev]"
           pip install pytest-cov
 
-      # Inject env (Supabase or fake for unit tests)
       - name: Inject Environment Variables
         run: |
           cd backend
-          echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "SUPABASE_DB_URL=postgres://fake" > .env
+          else
+            echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
+          fi
 
-      # -----------------------------
-      # RUN UNIT TESTS
-      # -----------------------------
+      # Run only unit tests
       - name: Run Unit Tests
         run: |
           cd backend
-          pytest tests/unit -vv
+          pytest -m unit -vv
 
-      # -----------------------------
-      # RUN ACCEPTANCE TESTS
-      # -----------------------------
+      # Run only acceptance tests
       - name: Run Acceptance Tests
         run: |
           cd backend
-          pytest tests/acceptance -vv
+          pytest -m acceptance -vv
 
-      # -----------------------------
-      # RUN FULL SUITE + COVERAGE
-      # -----------------------------
-      - name: Full Test Suite with Coverage
+      # Full suite for coverage
+      - name: Coverage Test Suite
         run: |
           cd backend
-          pytest --cov=src --cov-report=xml
+          pytest -vv --cov=src --cov-report=xml
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
