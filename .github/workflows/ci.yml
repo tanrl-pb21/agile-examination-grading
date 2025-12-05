@@ -6,7 +6,6 @@ on:
 
 jobs:
   backend-tests:
-    name: Run All Tests (Unit + Acceptance + Coverage)
     runs-on: ubuntu-latest
 
     steps:
@@ -16,7 +15,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Install backend dependencies once
       - name: Install backend dependencies
         run: |
           cd backend
@@ -24,35 +22,15 @@ jobs:
           pip install -e ".[dev]"
           pip install pytest-cov
 
-      # Inject env (Supabase or fake for unit tests)
       - name: Inject Environment Variables
         run: |
           cd backend
           echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
 
-      # -----------------------------
-      # RUN UNIT TESTS
-      # -----------------------------
-      - name: Run Unit Tests
+      - name: Run Full Test Suite with Coverage
         run: |
           cd backend
-          pytest tests/unit -vv
-
-      # -----------------------------
-      # RUN ACCEPTANCE TESTS
-      # -----------------------------
-      - name: Run Acceptance Tests
-        run: |
-          cd backend
-          pytest tests/acceptance -vv
-
-      # -----------------------------
-      # RUN FULL SUITE + COVERAGE
-      # -----------------------------
-      - name: Full Test Suite with Coverage
-        run: |
-          cd backend
-          pytest --cov=src --cov-report=xml
+          pytest -vv --cov=src --cov-report=xml
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
