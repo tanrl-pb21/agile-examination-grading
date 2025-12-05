@@ -7,6 +7,7 @@ on:
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -14,9 +15,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Install backend dependencies
         run: |
           cd backend
+          pip install --upgrade pip
           pip install -e ".[dev]"
           pip install pytest-cov
 
@@ -29,20 +31,7 @@ jobs:
             echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
           fi
 
-      # Run only unit tests
-      - name: Run Unit Tests
-        run: |
-          cd backend
-          pytest -m unit -vv
-
-      # Run only acceptance tests
-      - name: Run Acceptance Tests
-        run: |
-          cd backend
-          pytest -m acceptance -vv
-
-      # Full suite for coverage
-      - name: Coverage Test Suite
+      - name: Run Full Test Suite with Coverage
         run: |
           cd backend
           pytest -vv --cov=src --cov-report=xml
