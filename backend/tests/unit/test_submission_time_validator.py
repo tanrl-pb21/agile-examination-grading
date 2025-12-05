@@ -7,6 +7,7 @@ Tests submission timing validation logic
 import pytest
 from datetime import datetime, timezone, timedelta
 from src.services.take_exam_service import SubmissionTimeValidator, TimeConverter
+from unittest.mock import patch, MagicMock
 
 
 class TestSubmissionTimeValidator:
@@ -232,3 +233,4 @@ class TestSubmissionTimeValidator:
         else:
             with pytest.raises(ValueError):
                 validator.validate(exam_data, current_time)
+
