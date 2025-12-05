@@ -66,39 +66,48 @@
             animation: slideIn 0.3s ease-out;
         }
 
+
         .submit-badge.pending {
             background-color: #fef3c7;
             color: #d97706;
         }
+
 
         .submit-badge.graded {
             background-color: #d1fae5;
             color: #059669;
         }
 
+
         .student-avatar.blue {
             background-color: #3b82f6;
         }
+
 
         .student-avatar.green {
             background-color: #10b981;
         }
 
+
         .student-avatar.purple {
             background-color: #8b5cf6;
         }
+
 
         .student-avatar.orange {
             background-color: #f97316;
         }
 
+
         .student-avatar.pink {
             background-color: #ec4899;
         }
 
+
         .student-avatar.teal {
             background-color: #14b8a6;
         }
+
 
         @keyframes slideIn {
             from {
@@ -120,7 +129,7 @@
                 <h1>Exam Management</h1>
                 <p>Teacher Dashboard</p>
             </div>
-            
+           
             <nav class="sidebar-nav">
                 <a href="/examManagement" class="nav-item active">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -153,7 +162,7 @@
                     Settings
                 </a>
             </nav>
-            
+           
             <div class="sidebar-footer">
                 <div class="user-avatar">T</div>
                 <div class="user-info">
@@ -162,6 +171,7 @@
                 </div>
             </div>
         </aside>
+
 
         <!-- Main Content -->
         <main class="main-content">
@@ -190,8 +200,10 @@
                 </button>
             </div>
 
+
             <!-- Exam Info Cards -->
             <div class="exam-info-cards" id="examInfoCards"></div>
+
 
             <!-- Tabs -->
             <div class="tabs-container">
@@ -201,11 +213,13 @@
                 </div>
             </div>
 
+
             <!-- Tab Content: Assigned Questions -->
             <div class="tab-content active" id="assigned-questions">
                 <div class="question-stats" id="questionStats"></div>
                 <div class="questions-list" id="questionsList"></div>
             </div>
+
 
             <!-- Tab Content: Student Submissions -->
             <div class="tab-content" id="student-submissions">
@@ -239,6 +253,7 @@
         </main>
     </div>
 
+
     <!-- Add/Edit MCQ Modal -->
     <div class="modal-overlay" id="mcqModal">
         <div class="modal modal-question">
@@ -262,16 +277,17 @@
                     </svg>
                 </button>
             </div>
-            
+           
             <div class="modal-body">
                 <form id="mcqForm" onsubmit="saveMCQ(event)" novalidate>
                     <input type="hidden" id="mcqEditId" value="">
-                    
+                   
                     <div class="form-group">
                         <label>Question <span class="required">*</span></label>
                         <textarea style="resize: none;" id="mcqQuestion" placeholder="Enter your question here..." rows="3" oninput="clearError('mcqQuestion')"></textarea>
                         <div class="error-message" id="mcqQuestionError">Question text is required</div>
                     </div>
+
 
                     <div class="form-group">
                         <label>Answer Options <span class="required">*</span></label>
@@ -289,11 +305,13 @@
                         </p>
                     </div>
 
+
                     <div class="form-group">
                         <label>Points <span class="required">*</span></label>
                         <input type="number" id="mcqPoints" value="5" min="1" oninput="clearError('mcqPoints')">
                         <div class="error-message" id="mcqPointsError">Points must be a positive number greater than 0</div>
                     </div>
+
 
                     <div class="modal-footer-new">
                         <button type="submit" class="btn-modal-submit blue" id="mcqSubmitBtn">Add Question</button>
@@ -303,6 +321,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Add/Edit Essay Modal -->
     <div class="modal-overlay" id="essayModal">
@@ -329,10 +348,11 @@
                     </svg>
                 </button>
             </div>
-            
+           
             <div class="modal-body">
                 <form id="essayForm" onsubmit="saveEssay(event)" novalidate>
                     <input type="hidden" id="essayEditId" value="">
+
 
                     <div class="form-group">
                         <label>Question <span class="required">*</span></label>
@@ -340,11 +360,13 @@
                         <div class="error-message" id="essayQuestionError">Question text is required</div>
                     </div>
 
+
                     <div class="form-group">
                         <label>Points <span class="required">*</span></label>
                         <input type="number" id="essayPoints" value="20" min="1" oninput="clearError('essayPoints')">
                         <div class="error-message" id="essayPointsError">Points must be a positive number greater than 0</div>
                     </div>
+
 
                     <div class="form-group">
                         <label>Grading Rubric <span class="required">*</span></label>
@@ -352,10 +374,12 @@
                         <div class="error-message" id="essayRubricError">Grading rubric is required</div>
                     </div>
 
+
                     <div class="form-group" hidden>
-                        <label>Reference Answer (Optional)</label>
+                        <label >Reference Answer (Optional)</label>
                         <textarea style="resize: none;" id="essayReferenceAnswer" placeholder="Enter a reference answer or key points..." rows="3"></textarea>
                     </div>
+
 
                     <div class="modal-footer-new">
                         <button type="submit" class="btn-modal-submit purple" id="essaySubmitBtn">Add Question</button>
@@ -366,20 +390,22 @@
         </div>
     </div>
 
+
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const examId = urlParams.get('id');
-        
+       
         let currentExam = null;
         let currentFilter = 'all';
         let selectedCorrectAnswer = 0;
         let mcqOptionsCount = 4;
 
+
         // Validation helper functions
         function showError(fieldId, message) {
             const errorElement = document.getElementById(fieldId + 'Error');
             const inputElement = document.getElementById(fieldId);
-            
+           
             if (errorElement) {
                 errorElement.textContent = message || errorElement.textContent;
                 errorElement.classList.add('show');
@@ -389,31 +415,35 @@
             }
         }
 
+
         function clearError(fieldId) {
             const errorElement = document.getElementById(fieldId + 'Error');
             const inputElement = document.getElementById(fieldId);
-            
+           
             if (errorElement) {
                 errorElement.classList.remove('show');
             }
             if (inputElement) {
                 inputElement.classList.remove('error');
             }
-            
+           
             // Clear errors from option inputs
             document.querySelectorAll('.option-input-row input').forEach(input => {
                 input.classList.remove('error');
             });
         }
 
+
         function clearAllErrors() {
             document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
             document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
         }
 
+
         function validateMCQForm() {
             clearAllErrors();
             let isValid = true;
+
 
             // Validate question text
             const question = document.getElementById('mcqQuestion').value.trim();
@@ -422,10 +452,11 @@
                 isValid = false;
             }
 
+
             // Validate options
             const options = [];
             let hasEmptyOption = false;
-            
+           
             for (let i = 0; i < mcqOptionsCount; i++) {
                 const optionInput = document.getElementById(`mcqOption${i + 1}`);
                 if (optionInput) {
@@ -439,6 +470,7 @@
                 }
             }
 
+
             // Check minimum options
             if (mcqOptionsCount < 2) {
                 showError('mcqOptions', 'At least 2 options are required');
@@ -448,6 +480,7 @@
                 isValid = false;
             }
 
+
             // Validate points
             const points = parseInt(document.getElementById('mcqPoints').value);
             if (!points || points <= 0) {
@@ -455,12 +488,15 @@
                 isValid = false;
             }
 
+
             return isValid;
         }
+
 
         function validateEssayForm() {
             clearAllErrors();
             let isValid = true;
+
 
             // Validate question text
             const question = document.getElementById('essayQuestion').value.trim();
@@ -469,12 +505,14 @@
                 isValid = false;
             }
 
+
             // Validate points
             const points = parseInt(document.getElementById('essayPoints').value);
             if (!points || points <= 0) {
                 showError('essayPoints', 'Points must be a positive number greater than 0');
                 isValid = false;
             }
+
 
             // Validate rubric
             const rubric = document.getElementById('essayRubric').value.trim();
@@ -483,8 +521,10 @@
                 isValid = false;
             }
 
+
             return isValid;
         }
+
 
         function showSuccessMessage(message) {
             const successDiv = document.createElement('div');
@@ -492,48 +532,54 @@
             successDiv.textContent = message;
             document.body.appendChild(successDiv);
 
+
             setTimeout(() => {
                 successDiv.style.animation = 'slideIn 0.3s ease-out reverse';
                 setTimeout(() => successDiv.remove(), 300);
             }, 3000);
         }
 
+
         async function loadExamData() {
             try {
                 console.log('Fetching exam with ID:', examId);
-                
+               
                 // Verify exam ID exists
                 const examResponse = await axios.get(`/exams/${examId}`);
                 const exam = examResponse.data;
-                
+               
                 if (!exam) {
                     throw new Error('Exam ID does not exist');
                 }
-                
+               
                 const questionsResponse = await axios.get(`/questions/exam/${examId}`);
                 const questions = questionsResponse.data;
+
 
                 // Try to get submissions, but don't fail if it doesn't work
                 let submissions = [];
                 try {
-                    const submissionsResponse = await axios.get(`/submissions/exam/${examId}/students`);
+                    //const submissionsResponse = await axios.get(`/submissions/exam/${examId}/students`);
+                    const submissionsResponse = await axios.get(`/submissions/exam-withscore/${examId}/students`);
                     submissions = submissionsResponse.data || [];
                     console.log('Submissions data:', submissions);
                 } catch (submissionError) {
                     console.warn('Could not load submissions:', submissionError);
                     // Continue without submissions data
                 }
-                
+               
                 console.log('Exam data:', exam);
                 console.log('Questions data:', questions);
-                
+               
                 currentExam = transformExamData(exam);
                 currentExam.questions = transformQuestions(questions);
                 currentExam.submissions = transformSubmissions(submissions);
 
+
                currentExam.totalStudents = submissions.length;
                currentExam.submitted = submissions.filter(s => s.status === 'pending' || s.status === 'graded').length;
                currentExam.missed = submissions.filter(s => s.status === 'missed').length;
+
 
                 renderExamInfo();
                 renderQuestionStats();
@@ -541,7 +587,7 @@
                 renderSubmissionStats();
                 renderFilterTabs();
                 renderSubmissions();
-                
+               
             } catch (error) {
                 console.error('Error loading exam:', error);
                 if (error.response?.status === 404) {
@@ -554,15 +600,18 @@
         }
 
 
+
+
         function transformExamData(exam) {
+
 
             const examDate = exam.date;
             const startTimeStr = exam.start_time;
             const endTimeStr = exam.end_time;
-            
+           
             const startTime = startTimeStr.slice(0, 5);
             const endTime = endTimeStr.slice(0, 5);
-            
+           
             return {
                 id: exam.id,
                 examId: exam.exam_code || `EXAM${exam.id}`,
@@ -579,6 +628,7 @@
                 submissions: []
             };
         }
+
 
         function transformQuestions(questions) {
             return questions.map(q => {
@@ -604,53 +654,106 @@
             });
         }
 
-       function transformSubmissions(submissions) {
-        return submissions.map(sub => {
-            // Generate avatar from name
+
+function transformSubmissions(submissions) {
+    // Check if exam has ended
+    const hasExamEnded = checkIfExamEnded();
+
+
+    return submissions
+        .filter(sub => {
+            // ❌ BEFORE exam ends → hide "missed" submissions entirely
+            if (!hasExamEnded && sub.status === "missed") {
+                return false;
+            }
+            return true;
+        })
+        .map(sub => {
+            // Generate avatar from student name
             const name = sub.student_name || sub.student_email;
-            const nameParts = name.split(' ');
-            const avatar = nameParts.length > 1 
+            const nameParts = name.split(" ");
+            const avatar = nameParts.length > 1
                 ? nameParts[0][0].toUpperCase() + nameParts[1][0].toUpperCase()
                 : name.substring(0, 2).toUpperCase();
-            
-            // Avatar colors - use modulo to cycle through colors
-            const colors = ['blue', 'green', 'purple', 'orange', 'pink', 'teal'];
+
+
+            // Avatar color
+            const colors = ["blue", "green", "purple", "orange", "pink", "teal"];
             const colorIndex = Math.abs(sub.student_id) % colors.length;
             const avatarColor = colors[colorIndex];
-            
-            // Calculate percentage if score exists
-            let percentage = '';
+
+
+            // Calculate percentage
+            let percentage = "";
             if (sub.score !== null && sub.score !== undefined) {
-                const totalPoints = currentExam?.questions.reduce((sum, q) => sum + q.points, 0) || 100;
+                const totalPoints =
+                    currentExam?.questions.reduce((sum, q) => sum + q.points, 0) ||
+                    100;
+
+
                 const percent = Math.round((sub.score / totalPoints) * 100);
                 percentage = `${percent}%`;
             }
-            
-            // Format time to show only HH:MM
+
+
+            // Format HH:MM
             let formattedTime = null;
             if (sub.submission_time) {
-                formattedTime = sub.submission_time.substring(0, 5); // Gets HH:MM from HH:MM:SS
+                formattedTime = sub.submission_time.substring(0, 5);
             }
-            
+
+
+            // Status logic
+            let displayStatus = sub.status;
+
+
+            // ❌ Remove this — we already filtered above
+            // if (sub.status === "missed" && !hasExamEnded) { ... }
+
+
             return {
                 id: sub.submission_id,
-                studentId: `STU${String(sub.student_id).padStart(4, '0')}`,
+                studentId: `STU${String(sub.student_id).padStart(4, "0")}`,
                 studentName: sub.student_name || sub.student_email,
                 studentEmail: sub.student_email,
                 avatar: avatar,
                 avatarColor: avatarColor,
-                status: sub.status,
-                submissionDate: sub.submission_date 
+                status: displayStatus,
+                originalStatus: sub.status,
+                submissionDate: sub.submission_date
                     ? formatDate(sub.submission_date)
                     : null,
                 submissionTime: formattedTime,
                 score: sub.score,
                 scoreGrade: sub.score_grade,
                 percentage: percentage,
-                feedback: sub.overall_feedback
+                feedback: sub.overall_feedback,
             };
         });
+}
+
+
+       
+        function checkIfExamEnded() {
+            if (!currentExam || !currentExam.date || !currentExam.endTime) {
+                return false;
+            }
+           
+            // Get current date and time
+            const now = new Date();
+           
+            // Parse exam date and end time
+            const [year, month, day] = currentExam.date.split('-');
+            const [hours, minutes] = currentExam.endTime.split(':');
+           
+            // Create exam end datetime
+            const examEndDateTime = new Date(year, month - 1, day, hours, minutes);
+           
+            // Check if current time is past exam end time
+            return now > examEndDateTime;
         }
+
+
         function formatDate(dateStr) {
         // Format date from YYYY-MM-DD to readable format
             if (!dateStr) return '-';
@@ -661,6 +764,7 @@
             return `${day} ${month} ${year}`;
         }
 
+
         function init() {
             if (!examId) {
                 alert('Error: No exam ID provided. Please select a valid exam.');
@@ -669,6 +773,7 @@
             }
             loadExamData();
         }
+
 
         function renderExamInfo() {
             if (!currentExam) return;
@@ -682,6 +787,7 @@
                 <div class="info-card"><span class="info-label">Duration</span><span class="info-value">${currentExam.duration}</span></div>
             `;
         }
+
 
         function renderQuestionStats() {
             if (!currentExam) return;
@@ -712,22 +818,23 @@
             `;
         }
 
+
         function renderQuestions() {
             if (!currentExam) return;
             const container = document.getElementById('questionsList');
-            
+           
             const isCompleted = currentExam.status === 'completed';
-            
+           
             if (currentExam.questions.length === 0) {
                 container.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;">No questions added yet</div>';
                 return;
             }
-            
+           
             container.innerHTML = currentExam.questions.map((q, index) => {
-                const editButton = isCompleted 
-                    ? '' 
+                const editButton = isCompleted
+                    ? ''
                     : `<button class="action-btn edit" onclick="editQuestion(${q.id}, '${q.type}')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`;
-                
+               
                 if (q.type === 'mcq') {
                     return `<div class="question-card">
                         <div class="question-header">
@@ -766,12 +873,17 @@
             }).join('');
         }
 
+
         function renderSubmissionStats() {
             if (!currentExam) return;
+
+
+            const isExamOver = checkIfExamEnded();
+           
             const totalStudents = currentExam.totalStudents || 0;
             const submitted = currentExam.submitted || 0;
-            const missed = currentExam.missed || 0;
-            
+            const missed = isExamOver ? (currentExam.missed || 0) : 0;
+           
             document.getElementById('submissionStats').innerHTML = `
                 <div class="stat-card blue"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="stat-content"><span class="stat-number">${totalStudents}</span><span class="stat-label">Total Students</span></div></div>
                 <div class="stat-card green"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="stat-content"><span class="stat-number">${submitted}</span><span class="stat-label">Submitted</span></div></div>
@@ -780,13 +892,15 @@
         }
 
 
+
+
        function renderFilterTabs() {
             if (!currentExam) return;
             const submissions = currentExam.submissions || [];
             const pending = submissions.filter(s => s.status === 'pending').length;
             const graded = submissions.filter(s => s.status === 'graded').length;
             const missed = submissions.filter(s => s.status === 'missed').length;
-            
+           
             document.getElementById('filterTabs').innerHTML = `
                 <button class="filter-tab ${currentFilter === 'all' ? 'active' : ''}" onclick="setFilter('all')">All (${submissions.length})</button>
                 <button class="filter-tab ${currentFilter === 'pending' ? 'active' : ''}" onclick="setFilter('pending')">Pending (${pending})</button>
@@ -795,34 +909,35 @@
             `;
         }
 
+
         function renderSubmissions() {
             if (!currentExam) return;
-            
+           
             const submissions = currentExam.submissions || [];
             const search = document.getElementById('submissionSearch')?.value.toLowerCase() || '';
             let filtered = submissions;
-            
+           
             // Filter by status
             if (currentFilter !== 'all') {
                 filtered = filtered.filter(s => s.status === currentFilter);
             }
-            
+           
             // Filter by search
             if (search) {
-                filtered = filtered.filter(s => 
-                    s.studentName.toLowerCase().includes(search) || 
-                    s.studentId.toLowerCase().includes(search) || 
+                filtered = filtered.filter(s =>
+                    s.studentName.toLowerCase().includes(search) ||
+                    s.studentId.toLowerCase().includes(search) ||
                     s.studentEmail.toLowerCase().includes(search)
                 );
             }
-            
+           
             const tbody = document.getElementById('submissionsTableBody');
-            
+           
             if (filtered.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#6c757d;">No submissions found</td></tr>';
                 return;
             }
-            
+           
             tbody.innerHTML = filtered.map(s => {
                 // Format score display
                 let scoreDisplay = '-';
@@ -835,7 +950,7 @@
                         scoreDisplay += ` <span style="color:#10b981;font-weight:600;">${s.scoreGrade}</span>`;
                     }
                 }
-                
+               
                 // Format submission date/time
                 let submissionDateTime = '-';
                 if (s.submissionDate) {
@@ -844,10 +959,10 @@
                         submissionDateTime += ` ${s.submissionTime}`;
                     }
                 }
-                
+               
                 // Action button - only show for submitted/pending students
                 let actionButton = '-';
-                
+               
                 // Only allow grading if there's an actual submission (submission_id exists)
                 if (s.id && (s.status === 'submitted' || s.status === 'pending' || s.status === 'graded')) {
                     if (s.status === 'graded' || (s.scoreGrade && s.scoreGrade !== 'Pending')) {
@@ -875,7 +990,7 @@
                     }
                 }
                 // For missed submissions (no submission_id), don't show any action button
-                
+               
                 return `
                     <tr>
                         <td>${s.studentId}</td>
@@ -896,7 +1011,7 @@
                 `;
             }).join('');
         }
-        
+       
         function switchTab(tabId, btn) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -904,15 +1019,18 @@
             document.getElementById(tabId).classList.add('active');
         }
 
+
         function setFilter(filter) {
             currentFilter = filter;
             renderFilterTabs();
             renderSubmissions();
         }
 
+
         function filterSubmissions() {
             renderSubmissions();
         }
+
 
         function toggleDropdown(e) {
             e.stopPropagation();
@@ -920,10 +1038,12 @@
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         }
 
+
         document.addEventListener('click', () => {
             const menu = document.getElementById('dropdownMenu');
             if (menu) menu.style.display = 'none';
         });
+
 
         function selectCorrectAnswer(index) {
             selectedCorrectAnswer = index;
@@ -933,14 +1053,15 @@
             });
         }
 
+
         function renderMCQOptions(count, editData = null) {
             const container = document.getElementById('mcqOptionsList');
             container.innerHTML = '';
-            
+           
             for (let i = 0; i < count; i++) {
                 const isSelected = editData ? (i === editData.correctAnswer) : (i === selectedCorrectAnswer);
                 const optionValue = editData && editData.options[i] ? editData.options[i] : '';
-                
+               
                 const row = document.createElement('div');
                 row.className = 'option-input-row';
                 row.innerHTML = `
@@ -952,12 +1073,13 @@
                 `;
                 container.appendChild(row);
             }
-            
+           
             mcqOptionsCount = count;
             if (editData) {
                 selectedCorrectAnswer = editData.correctAnswer;
             }
         }
+
 
         function addOption() {
             if (mcqOptionsCount >= 10) {
@@ -968,12 +1090,13 @@
             renderMCQOptions(mcqOptionsCount);
         }
 
+
         function removeOption(index) {
             if (mcqOptionsCount <= 2) {
                 alert('Minimum 2 options required');
                 return;
             }
-            
+           
             const currentValues = [];
             for (let i = 0; i < mcqOptionsCount; i++) {
                 const input = document.getElementById(`mcqOption${i + 1}`);
@@ -981,21 +1104,22 @@
                     currentValues.push(input.value);
                 }
             }
-            
+           
             if (selectedCorrectAnswer === index) {
                 selectedCorrectAnswer = 0;
             } else if (selectedCorrectAnswer > index) {
                 selectedCorrectAnswer--;
             }
-            
+           
             mcqOptionsCount--;
             renderMCQOptions(mcqOptionsCount);
-            
+           
             currentValues.forEach((val, i) => {
                 const input = document.getElementById(`mcqOption${i + 1}`);
                 if (input) input.value = val;
             });
         }
+
 
         function resetMCQForm() {
             document.getElementById('mcqEditId').value = '';
@@ -1007,6 +1131,7 @@
             clearAllErrors();
         }
 
+
         function resetEssayForm() {
             document.getElementById('essayEditId').value = '';
             document.getElementById('essayQuestion').value = '';
@@ -1015,6 +1140,7 @@
             document.getElementById('essayReferenceAnswer').value = '';
             clearAllErrors();
         }
+
 
         function openMCQModal(e) {
             if (e) e.preventDefault();
@@ -1025,6 +1151,7 @@
             document.getElementById('mcqModal').classList.add('active');
         }
 
+
         function openEssayModal(e) {
             if (e) e.preventDefault();
             resetEssayForm();
@@ -1034,29 +1161,30 @@
             document.getElementById('essayModal').classList.add('active');
         }
 
+
         async function editQuestion(id, type) {
             if (currentExam.status === 'completed') {
                 alert('Cannot edit questions for completed exams');
                 return;
             }
-            
+           
             try {
                 const response = await axios.get(`/questions/${id}`);
                 const question = response.data;
-                
+               
                 if (type === 'mcq') {
                     document.getElementById('mcqEditId').value = id;
                     document.getElementById('mcqQuestion').value = question.question_text;
                     document.getElementById('mcqPoints').value = question.marks;
-                    
+                   
                     const correctIndex = question.options.findIndex(opt => opt.is_correct);
                     const optionsData = {
                         options: question.options.map(opt => opt.option_text),
                         correctAnswer: correctIndex
                     };
-                    
+                   
                     renderMCQOptions(question.options.length, optionsData);
-                    
+                   
                     document.getElementById('mcqModalTitle').textContent = 'Edit MCQ Question';
                     document.querySelector('#mcqModal .modal-title-group p').textContent = 'Update multiple choice question';
                     document.getElementById('mcqSubmitBtn').textContent = 'Update Question';
@@ -1067,7 +1195,7 @@
                     document.getElementById('essayPoints').value = question.marks;
                     document.getElementById('essayRubric').value = question.rubric || '';
                     document.getElementById('essayReferenceAnswer').value = question.reference_answer || '';
-                    
+                   
                     document.getElementById('essayModalTitle').textContent = 'Edit Essay Question';
                     document.querySelector('#essayModal .modal-title-group p').textContent = 'Update essay question';
                     document.getElementById('essaySubmitBtn').textContent = 'Update Question';
@@ -1079,29 +1207,31 @@
             }
         }
 
+
         function closeAllModals() {
             document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
             clearAllErrors();
         }
 
+
         async function saveMCQ(e) {
             e.preventDefault();
-            
+           
             // Validate form
             if (!validateMCQForm()) {
                 return;
             }
-            
+           
             const editId = document.getElementById('mcqEditId').value;
             const options = [];
-            
+           
             for (let i = 0; i < mcqOptionsCount; i++) {
                 const optionInput = document.getElementById(`mcqOption${i + 1}`);
                 if (optionInput && optionInput.value.trim()) {
                     options.push(optionInput.value.trim());
                 }
             }
-            
+           
             const questionData = {
                 exam_id: parseInt(examId),
                 question_text: document.getElementById('mcqQuestion').value.trim(),
@@ -1109,7 +1239,7 @@
                 options: options,
                 correct_option_index: selectedCorrectAnswer
             };
-            
+           
             try {
                 if (editId) {
                     await axios.put(`/questions/mcq/${editId}`, questionData);
@@ -1118,10 +1248,10 @@
                     await axios.post('/questions/mcq', questionData);
                     showSuccessMessage('MCQ Question added successfully!');
                 }
-                
+               
                 await loadExamData();
                 closeAllModals();
-                
+               
             } catch (error) {
                 console.error('Error saving question:', error);
                 const errorMsg = error.response?.data?.detail || error.message;
@@ -1129,16 +1259,17 @@
             }
         }
 
+
         async function saveEssay(e) {
             e.preventDefault();
-            
+           
             // Validate form
             if (!validateEssayForm()) {
                 return;
             }
-            
+           
             const editId = document.getElementById('essayEditId').value;
-            
+           
             const questionData = {
                 exam_id: parseInt(examId),
                 question_text: document.getElementById('essayQuestion').value.trim(),
@@ -1147,7 +1278,7 @@
                 word_limit: null,
                 reference_answer: document.getElementById('essayReferenceAnswer').value.trim() || null
             };
-            
+           
             try {
                 if (editId) {
                     await axios.put(`/questions/essay/${editId}`, questionData);
@@ -1156,10 +1287,10 @@
                     await axios.post('/questions/essay', questionData);
                     showSuccessMessage('Essay Question added successfully!');
                 }
-                
+               
                 await loadExamData();
                 closeAllModals();
-                
+               
             } catch (error) {
                 console.error('Error saving question:', error);
                 const errorMsg = error.response?.data?.detail || error.message;
@@ -1167,21 +1298,23 @@
             }
         }
 
+
         async function deleteQuestion(id) {
             if (!confirm('Are you sure you want to delete this question?')) {
                 return;
             }
-            
+           
             try {
                 await axios.delete(`/questions/${id}`);
                 showSuccessMessage('Question deleted successfully!');
                 await loadExamData();
-                
+               
             } catch (error) {
                 console.error('Error deleting question:', error);
                 alert('Failed to delete question: ' + (error.response?.data?.detail || error.message));
             }
         }
+
 
         function goToGrading(submissionId) {
             if (!submissionId) {
@@ -1190,6 +1323,7 @@
             }
             window.location.href = `/examGrading?submissionId=${submissionId}&examId=${examId}`;
         }
+
 
         init();
     </script>

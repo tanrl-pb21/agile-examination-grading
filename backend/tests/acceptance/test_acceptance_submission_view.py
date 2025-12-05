@@ -6,6 +6,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 from pytest_bdd import given as bdd_given, parsers, scenarios, then as bdd_then, when as bdd_when
+from unittest.mock import patch
 
 from main import app
 
@@ -35,11 +36,67 @@ class ViewScoreContext:
         self.submission = None  # type: ignore[assignment]
         self.exam = None  # type: ignore[assignment]
         self.questions = None  # type: ignore[assignment]
+        self.mock_submissions: Dict[int, Any] = {}
 
 
 @pytest.fixture
-def context() -> ViewScoreContext:
-    return ViewScoreContext()
+def context() -> ViewScoreContext: # type: ignore
+    ctx = ViewScoreContext()
+    yield ctx
+
+
+# ============================================================================
+# MOCK DATA GENERATOR
+# ============================================================================
+
+
+def create_mock_submission(submission_id: int, is_graded: bool = True) -> Dict[str, Any]:
+    """Create a realistic mock submission."""
+    return {
+        "id": submission_id,
+        "exam_code": "TEST001",
+        "student_id": 1,
+        "student_name": "John Doe",
+        "student_email": "john@example.com",
+        "submitted_at": "2026-01-15T10:30:00",
+        "current_score": 85.0 if is_graded else None,
+        "score_grade": "B" if is_graded else "Pending",
+        "overall_feedback": "Great work!" if is_graded else "",
+    }
+
+
+def create_mock_exam(exam_id: int = 1) -> Dict[str, Any]:
+    """Create a realistic mock exam."""
+    return {
+        "id": exam_id,
+        "title": "Software Engineering Midterm",
+        "exam_code": "TEST001",
+        "course": 1,
+        "date": "2026-01-15",
+        "start_time": "09:00",
+        "end_time": "11:00",
+        "status": "scheduled",
+    }
+
+
+def create_mock_questions() -> list:
+    """Create realistic mock questions."""
+    return [
+        {
+            "id": 1,
+            "question_text": "What is OOP?",
+            "question_type": "essay",
+            "marks": 10,
+            "student_answer": "Object-oriented programming is a programming paradigm...",
+        },
+        {
+            "id": 2,
+            "question_text": "Which of these is a design pattern?",
+            "question_type": "mcq",
+            "marks": 5,
+            "student_answer": "Factory Pattern",
+        },
+    ]
 
 
 # ============================================================================
@@ -51,16 +108,20 @@ def context() -> ViewScoreContext:
 def step_api_is_running(client: TestClient, context: ViewScoreContext) -> None:
     """Ensure API and test client are ready."""
     context.last_response = None
+    context.mock_submissions = {}
+    # Pre-populate some mock submissions
+    context.mock_submissions[21] = create_mock_submission(21, is_graded=True)
+    context.mock_submissions[26] = create_mock_submission(26, is_graded=False)
 
 
 @bdd_given("the grading database is populated")
-def step_grading_database_populated(client: TestClient) -> None:
-    """Ensure database has test data."""
+def step_grading_database_populated(client: TestClient, context: ViewScoreContext) -> None:
+    """Ensure database has test data (populate mock storage)."""
     pass
 
 
 # ============================================================================
-# THEN STEPS: ASSERTIONS (DEFINED EARLY)
+# THEN STEPS: ASSERTIONS
 # ============================================================================
 
 
@@ -347,7 +408,6 @@ def step_error_message_contains(context: ViewScoreContext, expected_text: str) -
     assert context.last_response is not None
     data = context.last_response.json()
     error_detail = data.get("detail", "")
-    # Handle both string and list error formats
     if isinstance(error_detail, list):
         error_text = str(error_detail).lower()
     else:
@@ -404,7 +464,7 @@ def step_question_marks_positive(context: ViewScoreContext) -> None:
 def step_retrieve_submission_int(
     client: TestClient, context: ViewScoreContext, submission_id: int
 ) -> None:
-    """Retrieve submission by integer ID."""
+    """Retrieve submission by integer ID - calls actual API endpoint."""
     response = client.get(f"/grading/submission/{submission_id}")
     context.last_response = response
     if response.status_code == 200:

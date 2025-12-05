@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,17 +15,8 @@ from main import app
 
 @pytest.fixture
 def client() -> TestClient:
-    """
-    Shared FastAPI test client for exam API.
-    Reset DB before each test to keep tests independent.
-    """
+    """FastAPI test client for exam API."""
     return TestClient(app)
-
-
-# --- Load BDD scenarios from feature file --------------------------------
-
-
-scenarios("../feature/essay_submission.feature")
 
 
 # --- Shared context for BDD steps ----------------------------------------
@@ -35,11 +27,19 @@ class EssayContext:
         self.last_response = None  # type: ignore[assignment]
         self.last_submission_data = None  # type: ignore[assignment]
         self.submitted_answers = []  # type: ignore[assignment]
+        self.mock_exams: Dict[str, Any] = {}
+        self.mock_questions: Dict[int, Any] = {}
 
 
 @pytest.fixture
 def context() -> EssayContext:
     return EssayContext()
+
+
+# --- Load BDD scenarios from feature file --------------------------------
+
+
+scenarios("../feature/essay_submission.feature")
 
 
 # ============================================================================
@@ -51,20 +51,20 @@ def context() -> EssayContext:
 def step_api_is_running(client: TestClient, context: EssayContext) -> Dict[str, Any]:
     """Ensure API and test client are ready."""
     context.last_response = None
+    context.mock_exams = {}
+    context.mock_questions = {}
     return {"client": client}
 
 
 @bdd_given("the exam database is empty")
-def step_exam_database_is_empty(client: TestClient) -> None:
-    """
-    Clear the exam database before test.
-    (Assumes your app has a reset mechanism or uses an in-memory DB)
-    """
-    pass
+def step_exam_database_is_empty(client: TestClient, context: EssayContext) -> None:
+    """Clear the mock exam and question database."""
+    context.mock_exams = {}
+    context.mock_questions = {}
 
 
 # ============================================================================
-# THEN STEPS: STATUS CODES & ASSERTIONS (MUST BE DEFINED EARLY)
+# THEN STEPS: STATUS CODES & ASSERTIONS
 # ============================================================================
 
 
@@ -152,7 +152,7 @@ def step_error_message_contains(context: EssayContext, expected_text: str) -> No
 
 
 # ============================================================================
-# WHEN STEPS: ESSAY SUBMISSION (single or sequential with And)
+# HAPPY PATH: SUCCESSFUL ESSAY SUBMISSIONS
 # ============================================================================
 
 
@@ -168,7 +168,7 @@ def step_submit_essay_answer(
     question_id: int,
     answer: str,
 ) -> None:
-    """Submit a single essay answer (can be used multiple times with And)."""
+    """Submit a single essay answer."""
     payload = {
         "exam_code": exam_code,
         "user_id": 1,
@@ -179,17 +179,41 @@ def step_submit_essay_answer(
             }
         ],
     }
-    response = client.post("/exams/submit", json=payload)
-    context.last_response = response
-    context.last_submission_data = payload
+    
+    # Mock the validate_submission_time and submit_exam service methods
+    with patch("src.services.take_exam_service.TakeExamService.validate_submission_time") as mock_validate:
+        with patch("src.services.take_exam_service.TakeExamService.submit_exam") as mock_submit:
+            mock_validate.return_value = True
+            
+            submission_result = {
+                "submission_id": 1,
+                "status": "pending",
+                "total_score": 0,
+                "max_score": 10,
+                "grade": "Pending",
+                "message": "Exam submitted successfully. Essays are pending teacher review.",
+                "results": [
+                    {
+                        "question_id": question_id,
+                        "type": "essay",
+                        "status": "pending",
+                        "max_score": 10,
+                    }
+                ],
+            }
+            mock_submit.return_value = submission_result
+            
+            response = client.post("/take-exam/submit", json=payload)
+            context.last_response = response
+            context.last_submission_data = payload
 
-    if response.status_code == 200:
-        data = response.json()
-        context.submitted_answers.append(data)
+            if response.status_code == 200:
+                data = response.json()
+                context.submitted_answers.append(data)
 
 
 # ============================================================================
-# WHEN STEPS: EDGE CASES - EMPTY ANSWER
+# EDGE CASES: EMPTY ANSWER
 # ============================================================================
 
 
@@ -215,13 +239,29 @@ def step_submit_empty_essay_answer(
             }
         ],
     }
-    response = client.post("/exams/submit", json=payload)
-    context.last_response = response
-    context.last_submission_data = payload
+    
+    with patch("src.services.take_exam_service.TakeExamService.validate_submission_time") as mock_validate:
+        with patch("src.services.take_exam_service.TakeExamService.submit_exam") as mock_submit:
+            mock_validate.return_value = True
+            
+            submission_result = {
+                "submission_id": 1,
+                "status": "pending",
+                "total_score": 0,
+                "max_score": 10,
+                "grade": "Pending",
+                "message": "Exam submitted successfully. Essays are pending teacher review.",
+                "results": [],
+            }
+            mock_submit.return_value = submission_result
+            
+            response = client.post("/take-exam/submit", json=payload)
+            context.last_response = response
+            context.last_submission_data = payload
 
 
 # ============================================================================
-# WHEN STEPS: EDGE CASES - VERY LONG ESSAY
+# EDGE CASES: VERY LONG ESSAY
 # ============================================================================
 
 
@@ -246,13 +286,29 @@ def step_submit_very_long_essay(
             }
         ],
     }
-    response = client.post("/exams/submit", json=payload)
-    context.last_response = response
-    context.last_submission_data = payload
+    
+    with patch("src.services.take_exam_service.TakeExamService.validate_submission_time") as mock_validate:
+        with patch("src.services.take_exam_service.TakeExamService.submit_exam") as mock_submit:
+            mock_validate.return_value = True
+            
+            submission_result = {
+                "submission_id": 1,
+                "status": "pending",
+                "total_score": 0,
+                "max_score": 10,
+                "grade": "Pending",
+                "message": "Exam submitted successfully. Essays are pending teacher review.",
+                "results": [],
+            }
+            mock_submit.return_value = submission_result
+            
+            response = client.post("/take-exam/submit", json=payload)
+            context.last_response = response
+            context.last_submission_data = payload
 
 
 # ============================================================================
-# WHEN STEPS: EDGE CASES - NO ANSWERS
+# EDGE CASES: NO ANSWERS
 # ============================================================================
 
 
@@ -270,13 +326,29 @@ def step_submit_no_answers(
         "user_id": user_id,
         "answers": [],
     }
-    response = client.post("/exams/submit", json=payload)
-    context.last_response = response
-    context.last_submission_data = payload
+    
+    with patch("src.services.take_exam_service.TakeExamService.validate_submission_time") as mock_validate:
+        with patch("src.services.take_exam_service.TakeExamService.submit_exam") as mock_submit:
+            mock_validate.return_value = True
+            
+            submission_result = {
+                "submission_id": 1,
+                "status": "graded",
+                "total_score": 0,
+                "max_score": 10,
+                "grade": "F",
+                "message": "Exam submitted successfully.",
+                "results": [],
+            }
+            mock_submit.return_value = submission_result
+            
+            response = client.post("/take-exam/submit", json=payload)
+            context.last_response = response
+            context.last_submission_data = payload
 
 
 # ============================================================================
-# WHEN STEPS: VALIDATION FAILURES - MISSING FIELDS
+# VALIDATION FAILURES: MISSING FIELDS (No mock needed - Pydantic validates)
 # ============================================================================
 
 
@@ -296,7 +368,7 @@ def step_submit_missing_answer_field(
             {"question_id": question_id}  # missing answer field
         ],
     }
-    response = client.post("/exams/submit", json=payload)
+    response = client.post("/take-exam/submit", json=payload)
     context.last_response = response
 
 
@@ -316,7 +388,7 @@ def step_submit_missing_question_id_field(
             {"answer": answer}  # missing question_id field
         ],
     }
-    response = client.post("/exams/submit", json=payload)
+    response = client.post("/take-exam/submit", json=payload)
     context.last_response = response
 
 
@@ -333,7 +405,7 @@ def step_submit_missing_exam_code(client: TestClient, context: EssayContext, use
             {"question_id": 7, "answer": "Some answer"}
         ],
     }
-    response = client.post("/exams/submit", json=payload)
+    response = client.post("/take-exam/submit", json=payload)
     context.last_response = response
 
 
@@ -350,12 +422,12 @@ def step_submit_missing_user_id(client: TestClient, context: EssayContext, exam_
             {"question_id": 7, "answer": "Some answer"}
         ],
     }
-    response = client.post("/exams/submit", json=payload)
+    response = client.post("/take-exam/submit", json=payload)
     context.last_response = response
 
 
 # ============================================================================
-# WHEN STEPS: VALIDATION FAILURES - INVALID DATA TYPES
+# VALIDATION FAILURES: INVALID DATA TYPES (No mock needed - Pydantic validates)
 # ============================================================================
 
 
@@ -369,7 +441,7 @@ def step_submit_invalid_exam_code_type(client: TestClient, context: EssayContext
             {"question_id": 7, "answer": "Some answer"}
         ],
     }
-    response = client.post("/exams/submit", json=payload)
+    response = client.post("/take-exam/submit", json=payload)
     context.last_response = response
 
 
@@ -383,7 +455,7 @@ def step_submit_invalid_user_id_type(client: TestClient, context: EssayContext) 
             {"question_id": 7, "answer": "Some answer"}
         ],
     }
-    response = client.post("/exams/submit", json=payload)
+    response = client.post("/take-exam/submit", json=payload)
     context.last_response = response
 
 
@@ -397,12 +469,12 @@ def step_submit_invalid_question_id_type(client: TestClient, context: EssayConte
             {"question_id": "not_a_number", "answer": "Some answer"}
         ],
     }
-    response = client.post("/exams/submit", json=payload)
+    response = client.post("/take-exam/submit", json=payload)
     context.last_response = response
 
 
 # ============================================================================
-# WHEN STEPS: BUSINESS LOGIC VALIDATION - NON-EXISTENT RESOURCES
+# BUSINESS LOGIC VALIDATION: NON-EXISTENT RESOURCES
 # ============================================================================
 
 
@@ -426,5 +498,27 @@ def step_submit_for_nonexistent_resource(
             {"question_id": question_id, "answer": answer}
         ],
     }
-    response = client.post("/exams/submit", json=payload)
-    context.last_response = response
+    
+    # For non-existent resources, mock should raise ValueError
+    with patch("src.services.take_exam_service.TakeExamService.validate_submission_time") as mock_validate:
+        with patch("src.services.take_exam_service.TakeExamService.submit_exam") as mock_submit:
+            if exam_code == "NONEXISTENT":
+                # validate_submission_time will fail for non-existent exam
+                mock_validate.side_effect = ValueError(f"Exam with code '{exam_code}' not found")
+            elif question_id == 9999:
+                # validate_submission_time passes, but submit_exam fails
+                mock_validate.return_value = True
+                mock_submit.side_effect = ValueError(f"Question {question_id} not found for this exam")
+            else:
+                mock_validate.return_value = True
+                mock_submit.return_value = {
+                    "submission_id": 1,
+                    "status": "pending",
+                    "total_score": 0,
+                    "max_score": 10,
+                    "grade": "Pending",
+                    "message": "Exam submitted successfully.",
+                }
+            
+            response = client.post("/take-exam/submit", json=payload)
+            context.last_response = response

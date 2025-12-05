@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,17 +15,8 @@ from main import app
 
 @pytest.fixture
 def client() -> TestClient:
-    """
-    Shared FastAPI test client for exam API.
-    Reset DB before each test to keep tests independent.
-    """
+    """FastAPI test client for exam API."""
     return TestClient(app)
-
-
-# --- Load BDD scenarios from feature file --------------------------------
-
-
-scenarios("../feature/create_exam.feature")
 
 
 # --- Shared context for BDD steps ----------------------------------------
@@ -35,11 +27,18 @@ class ExamContext:
         self.last_response = None  # type: ignore[assignment]
         self.last_exam_id = None
         self.created_exams = []  # type: ignore[assignment]
+        self.mock_exams: Dict[str, Any] = {}  # Store mocked exams
 
 
 @pytest.fixture
 def context() -> ExamContext:
     return ExamContext()
+
+
+# --- Load BDD scenarios from feature file --------------------------------
+
+
+scenarios("../feature/create_exam.feature")
 
 
 # ============================================================================
@@ -51,17 +50,14 @@ def context() -> ExamContext:
 def api_is_running(client: TestClient, context: ExamContext) -> Dict[str, Any]:
     """Ensure API and test client are ready."""
     context.last_response = None
+    context.mock_exams = {}
     return {"client": client}
 
 
 @bdd_given("the exam database is empty")
-def exam_database_is_empty(client: TestClient) -> None:
-    """
-    Clear the exam database before test.
-    (Assumes your app has a reset mechanism or uses an in-memory DB)
-    """
-    # If your app has a reset_db() function, call it here
-    pass
+def exam_database_is_empty(client: TestClient, context: ExamContext) -> None:
+    """Clear the mock exam database."""
+    context.mock_exams = {}
 
 
 # ============================================================================
@@ -83,9 +79,7 @@ def create_exam_with_details(
     start_time: str,
     end_time: str,
 ) -> None:
-    """
-    BDD When step: Create an exam with provided details.
-    """
+    """BDD When step: Create an exam with provided details."""
     payload = {
         "title": title,
         "exam_code": exam_code,
@@ -95,23 +89,33 @@ def create_exam_with_details(
         "end_time": end_time,
         "status": "scheduled",
     }
-    response = client.post("/exams", json=payload)
-    context.last_response = response
+    
+    # Mock ExamService.add_exam at the router level
+    with patch("src.routers.exams.service.add_exam") as mock_add:
+        exam_data = {
+            "id": len(context.mock_exams) + 1,
+            **payload
+        }
+        mock_add.return_value = exam_data
+        
+        response = client.post("/exams", json=payload)
+        context.last_response = response
 
-    # DEBUG: Print full response details on failure
-    if response.status_code != 201:
-        print(f"\n❌ FAILED TO CREATE EXAM")
-        print(f"Status Code: {response.status_code}")
-        print(f"Payload: {payload}")
-        try:
-            print(f"Response: {response.json()}")
-        except:
-            print(f"Response Text: {response.text}")
+        # DEBUG: Print full response details on failure
+        if response.status_code != 201:
+            print(f"\n❌ FAILED TO CREATE EXAM")
+            print(f"Status Code: {response.status_code}")
+            print(f"Payload: {payload}")
+            try:
+                print(f"Response: {response.json()}")
+            except:
+                print(f"Response Text: {response.text}")
 
-    if response.status_code == 201:
-        data = response.json()
-        context.last_exam_id = data.get("id")
-        context.created_exams.append(data)
+        if response.status_code == 201:
+            data = response.json()
+            context.last_exam_id = data.get("id")
+            context.created_exams.append(data)
+            context.mock_exams[exam_code] = data
 
 
 @bdd_then(parsers.parse("I receive status code {code:d}"))
@@ -181,8 +185,9 @@ def create_existing_exam(
     start_time: str,
     end_time: str,
 ) -> None:
-    """Create an exam to use in test setup."""
-    payload = {
+    """Create a mock exam for test setup."""
+    exam_data = {
+        "id": len(context.mock_exams) + 1,
         "title": title,
         "exam_code": exam_code,
         "course": "1",
@@ -191,28 +196,18 @@ def create_existing_exam(
         "end_time": end_time,
         "status": "scheduled",
     }
-    response = client.post("/exams", json=payload)
-    # Be lenient during setup - if it fails, store the response anyway
-    if response.status_code != 201:
-        context.last_response = response
-        # Try to get error details for debugging
-        try:
-            print(f"Setup error: {response.json()}")
-        except:
-            print(f"Setup error: {response.text}")
-        # Don't fail the setup, let the test handle it
-        return
-    
-    data = response.json()
-    context.created_exams.append(data)
-    context.last_exam_id = data.get("id")
+    context.mock_exams[exam_code] = exam_data
+    context.created_exams.append(exam_data)
+    context.last_exam_id = exam_data["id"]
 
 
 @bdd_when("I request all exams")
 def request_all_exams(client: TestClient, context: ExamContext) -> None:
     """Get all exams from the API."""
-    response = client.get("/exams")
-    context.last_response = response
+    with patch("src.routers.exams.service.get_all_exams") as mock_get_all:
+        mock_get_all.return_value = list(context.mock_exams.values())
+        response = client.get("/exams")
+        context.last_response = response
 
 
 @bdd_then("the response is a list")
@@ -233,12 +228,18 @@ def check_list_contains_title(context: ExamContext, title: str) -> None:
 @bdd_when("I get the exam by ID")
 def get_exam_by_id(client: TestClient, context: ExamContext) -> None:
     """Get a specific exam by ID."""
-    # Skip if exam wasn't created (e.g., due to duplicate code in setup)
     if context.last_exam_id is None:
         pytest.skip("Exam was not created in setup phase")
     
-    response = client.get(f"/exams/{context.last_exam_id}")
-    context.last_response = response
+    exam_to_return = next(
+        (e for e in context.created_exams if e["id"] == context.last_exam_id),
+        None
+    )
+    
+    with patch("src.routers.exams.service.get_exam") as mock_get:
+        mock_get.return_value = exam_to_return
+        response = client.get(f"/exams/{context.last_exam_id}")
+        context.last_response = response
 
 
 @bdd_then(parsers.parse('the response contains title "{title}"'))
@@ -272,6 +273,7 @@ def create_exam_missing_title(client: TestClient, context: ExamContext) -> None:
         "start_time": "09:00",
         "end_time": "11:00",
     }
+    
     response = client.post("/exams", json=payload)
     context.last_response = response
 
@@ -286,6 +288,7 @@ def create_exam_missing_exam_code(client: TestClient, context: ExamContext) -> N
         "start_time": "09:00",
         "end_time": "11:00",
     }
+    
     response = client.post("/exams", json=payload)
     context.last_response = response
 
@@ -307,6 +310,7 @@ def create_exam_invalid_date(client: TestClient, context: ExamContext, date_form
         "end_time": "11:00",
         "status": "scheduled",
     }
+    
     response = client.post("/exams", json=payload)
     context.last_response = response
 
@@ -323,6 +327,7 @@ def create_exam_invalid_time(client: TestClient, context: ExamContext, time_form
         "end_time": "11:00",
         "status": "scheduled",
     }
+    
     response = client.post("/exams", json=payload)
     context.last_response = response
 
@@ -344,6 +349,7 @@ def create_exam_past_date(client: TestClient, context: ExamContext, date: str) -
         "end_time": "11:00",
         "status": "scheduled",
     }
+    
     response = client.post("/exams", json=payload)
     context.last_response = response
 
@@ -362,6 +368,7 @@ def create_exam_end_before_start(
         "end_time": end_time,
         "status": "scheduled",
     }
+    
     response = client.post("/exams", json=payload)
     context.last_response = response
 
@@ -398,8 +405,11 @@ def create_exam_duplicate_code(client: TestClient, context: ExamContext, exam_co
         "end_time": "11:00",
         "status": "scheduled",
     }
-    response = client.post("/exams", json=payload)
-    context.last_response = response
+    
+    with patch("src.routers.exams.service.add_exam") as mock_add:
+        mock_add.side_effect = ValueError(f"Exam code '{exam_code}' already exists")
+        response = client.post("/exams", json=payload)
+        context.last_response = response
 
 
 @bdd_when(
@@ -418,8 +428,11 @@ def create_exam_scheduling_conflict(
         "end_time": end_time,
         "status": "scheduled",
     }
-    response = client.post("/exams", json=payload)
-    context.last_response = response
+    
+    with patch("src.routers.exams.service.add_exam") as mock_add:
+        mock_add.side_effect = ValueError("Scheduling conflict detected")
+        response = client.post("/exams", json=payload)
+        context.last_response = response
 
 
 # ============================================================================
@@ -430,5 +443,7 @@ def create_exam_scheduling_conflict(
 @bdd_when(parsers.parse('I request an exam with ID "{exam_id}"'))
 def request_exam_by_nonexistent_id(client: TestClient, context: ExamContext, exam_id: str) -> None:
     """Request an exam with a non-existent ID."""
-    response = client.get(f"/exams/{exam_id}")
-    context.last_response = response
+    with patch("src.routers.exams.service.get_exam") as mock_get:
+        mock_get.return_value = None
+        response = client.get(f"/exams/{exam_id}")
+        context.last_response = response

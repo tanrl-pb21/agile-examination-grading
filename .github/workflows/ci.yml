@@ -1,108 +1,61 @@
-# name: Backend CI Pipeline
+name: Backend CI Pipeline
 
-# on:
-#   push:
-#   pull_request:
+on:
+  push:
+  pull_request:
 
-# jobs:
+jobs:
+  backend-tests:
+    name: Run All Tests (Unit + Acceptance + Coverage)
+    runs-on: ubuntu-latest
 
-#   # =====================================================
-#   # 1. Unit Tests
-#   # =====================================================
-#   unit-tests:
-#     name: Unit Tests
-#     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-#     steps:
-#       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-#       - uses: actions/setup-python@v5
-#         with:
-#           python-version: "3.12"
+      # Install backend dependencies once
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install pytest-cov
 
-#       - name: Install backend dependencies
-#         run: |
-#           cd backend
-#           pip install --upgrade pip
-#           pip install -e ".[dev]"
-#           pip install pytest-cov
+      # Inject env (Supabase or fake for unit tests)
+      - name: Inject Environment Variables
+        run: |
+          cd backend
+          echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
 
-#       - name: Inject fake env for unit tests
-#         run: |
-#           cd backend
-#           echo "SUPABASE_DB_URL=postgres://fake" > .env
-          
-#       - name: Run Unit Tests
-#         run: |
-#           cd backend
-#           pytest tests/unit -vv
+      # -----------------------------
+      # RUN UNIT TESTS
+      # -----------------------------
+      - name: Run Unit Tests
+        run: |
+          cd backend
+          pytest tests/unit -vv
 
+      # -----------------------------
+      # RUN ACCEPTANCE TESTS
+      # -----------------------------
+      - name: Run Acceptance Tests
+        run: |
+          cd backend
+          pytest tests/acceptance -vv
 
-  # =====================================================
-  # 2. Acceptance Tests
-  # =====================================================
-  # acceptance-tests:
-  #   name: Acceptance Tests
-  #   runs-on: ubuntu-latest
+      # -----------------------------
+      # RUN FULL SUITE + COVERAGE
+      # -----------------------------
+      - name: Full Test Suite with Coverage
+        run: |
+          cd backend
+          pytest --cov=src --cov-report=xml
 
-  #   steps:
-  #     - uses: actions/checkout@v4
-
-  #     - uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.12"
-
-  #     - name: Install backend dependencies
-  #       run: |
-  #         cd backend
-  #         pip install --upgrade pip
-  #         pip install -e ".[dev]"
-  #         pip install pytest-cov
-
-  #     - name: Inject Supabase Environment
-  #       run: |
-  #         cd backend
-  #         echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
-
-  #     - name: Run Acceptance Tests
-  #       run: |
-  #         cd backend
-  #         pytest tests/acceptance -vv
-
-
-  # =====================================================
-  # 3. Overall + Coverage
-  # =====================================================
-  # overall-tests:
-  #   name: All Tests + Coverage
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #     - uses: actions/checkout@v4
-
-  #     - uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.12"
-
-  #     - name: Install backend dependencies
-  #       run: |
-  #         cd backend
-  #         pip install --upgrade pip
-  #         pip install -e ".[dev]"
-  #         pip install pytest-cov
-
-  #     - name: Inject Supabase Environment
-  #       run: |
-  #         cd backend
-  #         echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
-
-  #     - name: Run Full Test Suite with Coverage
-  #       run: |
-  #         cd backend
-  #         pytest --cov=src --cov-report=xml
-
-  #     - name: Upload Coverage Report
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: coverage-report
-  #         path: backend/coverage.xml
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: backend/coverage.xml

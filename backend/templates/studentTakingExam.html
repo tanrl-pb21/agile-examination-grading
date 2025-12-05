@@ -55,7 +55,7 @@
             <p style="font-size: 18px; margin-bottom: 30px;">The exam time has ended. Submissions are no longer
                 accepted.</p>
             <p style="color: #666; font-size: 14px;">Please contact your instructor if you have any concerns.</p>
-            <button onclick="window.location.href='exam-list.html'"
+            <button onclick="window.location.href='/studentExam'"
                 style="margin-top: 20px; padding: 10px 30px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
                 Return to Exam List
             </button>
@@ -69,7 +69,7 @@
         let examQuestionsData = [];
         let selectedAnswers = {};
         let currentExamCode = null;
-        let currentUserId = 3; // TODO: Get from session/auth system
+        let currentUserId = 1; // TODO: Get from session/auth system
         let timerInterval = null;
         let examHasEnded = false; // Track if exam time is up
         let isSubmitting = false; // Prevent duplicate submissions
@@ -79,7 +79,7 @@
         // ===========================
         async function checkIfStudentAlreadySubmitted(examCode, userId) {
             try {
-                const res = await axios.get(`/exams/check-submission/${examCode}/${userId}`);
+                const res = await axios.get(`/take-exam/check-submission/${examCode}/${userId}`);
 
                 if (res.data.submitted) {
                     alert("You have already submitted this exam. You cannot retake it.");
@@ -98,7 +98,7 @@
 
         async function checkExamTime(examCode) {
             try {
-                const res = await axios.get(`/exams/check-availability/${examCode}`);
+                const res = await axios.get(`/take-exam/availability/${examCode}`);
                 const status = res.data.status;
 
                 if (status === "not_started") {
@@ -121,82 +121,82 @@
                 return false;
             }
         }
-            async function initializeExam() {
-                const params = new URLSearchParams(window.location.search);
-                currentExamCode = params.get("exam_code");
 
-                if (!currentExamCode) {
-                    alert("No exam code provided!");
-                    return;
-                }
+        async function initializeExam() {
+            const params = new URLSearchParams(window.location.search);
+            currentExamCode = params.get("exam_code");
 
-                // 1️Block if exam not started or already ended
-                const timeOk = await checkExamTime(currentExamCode);
-                if (!timeOk) return;
-
-                // 2️Block if student already submitted
-                const allowed = await checkIfStudentAlreadySubmitted(currentExamCode, currentUserId);
-                if (!allowed) return;
-
-                // 3️Load exam normally
-                loadExamQuestions(currentExamCode);
-                loadExamDuration(currentExamCode);
+            if (!currentExamCode) {
+                alert("No exam code provided!");
+                return;
             }
 
+            // 1️⃣ Block if exam not started or already ended
+            const timeOk = await checkExamTime(currentExamCode);
+            if (!timeOk) return;
 
-            // ===========================
-            // LOAD EXAM DATA
-            // ===========================
-            async function loadExamQuestions(examCode) {
-                try {
-                    const res = await axios.get(`/exams/code/${examCode}/questions`);
-                    const rawQuestions = res.data.questions;
+            // 2️⃣ Block if student already submitted
+            const allowed = await checkIfStudentAlreadySubmitted(currentExamCode, currentUserId);
+            if (!allowed) return;
 
-                    examQuestionsData = transformQuestionsData(rawQuestions);
-                    renderAllQuestions();
-                    updateProgressDisplay();
+            // 3️⃣ Load exam normally
+            loadExamQuestions(currentExamCode);
+            loadExamDuration(currentExamCode);
+        }
 
-                } catch (err) {
-                    console.error("Error loading exam questions:", err);
-                    alert("Unable to load exam questions");
-                }
+        // ===========================
+        // LOAD EXAM DATA
+        // ===========================
+        async function loadExamQuestions(examCode) {
+            try {
+                const res = await axios.get(`/take-exam/questions/${examCode}`);
+                const rawQuestions = res.data.questions;
+
+                examQuestionsData = transformQuestionsData(rawQuestions);
+                renderAllQuestions();
+                updateProgressDisplay();
+
+            } catch (err) {
+                console.error("Error loading exam questions:", err);
+                alert("Unable to load exam questions");
             }
+        }
 
-            function transformQuestionsData(rawQuestions) {
-                return rawQuestions.map((q, index) => ({
-                    id: q.id,
-                    type: q.question_type.toLowerCase() === "mcq"
-                        ? "Multiple Choice"
-                        : "Essay Question",
-                    marks: q.marks,
-                    questionNumber: index + 1,
-                    totalQuestions: rawQuestions.length,
-                    question: q.question_text,
-                    options: q.options.map((opt, idx) => ({
-                        id: opt.id,
-                        label: String.fromCharCode(65 + idx), // A, B, C, D...
-                        text: opt.option_text
-                    })),
-                    note: q.question_type.toLowerCase() === "essay"
-                        ? "Write a detailed answer. This will be manually graded by your instructor."
-                        : null
-                }));
-            }
+        function transformQuestionsData(rawQuestions) {
+            return rawQuestions.map((q, index) => ({
+                id: q.id,
+                type: q.question_type.toLowerCase() === "mcq"
+                    ? "Multiple Choice"
+                    : "Essay Question",
+                marks: q.marks,
+                questionNumber: index + 1,
+                totalQuestions: rawQuestions.length,
+                question: q.question_text,
+                options: q.options.map((opt, idx) => ({
+                    id: opt.id,
+                    label: String.fromCharCode(65 + idx), // A, B, C, D...
+                    text: opt.option_text
+                })),
+                note: q.question_type.toLowerCase() === "essay"
+                    ? "Write a detailed answer. This will be manually graded by your instructor."
+                    : null
+            }));
+        }
 
-            // ===========================
-            // RENDER UI
-            // ===========================
-            function renderAllQuestions() {
-                const container = document.getElementById('questionsContainer');
-                container.innerHTML = examQuestionsData.map(q => {
-                    return q.type === 'Multiple Choice'
-                        ? renderMCQQuestion(q)
-                        : renderEssayQuestion(q);
-                }).join("");
-            }
+        // ===========================
+        // RENDER UI
+        // ===========================
+        function renderAllQuestions() {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = examQuestionsData.map(q => {
+                return q.type === 'Multiple Choice'
+                    ? renderMCQQuestion(q)
+                    : renderEssayQuestion(q);
+            }).join("");
+        }
 
-            function renderMCQQuestion(question) {
-                return `
+        function renderMCQQuestion(question) {
+            return `
                 <div class="question-card-student">
                     <div class="question-header-student">
                         <div class="question-type-badge mcq-badge">
@@ -216,10 +216,10 @@
                     </div>
                 </div>
             `;
-            }
+        }
 
-            function renderMCQOptions(question) {
-                return question.options.map(opt => `
+        function renderMCQOptions(question) {
+            return question.options.map(opt => `
                 <label class="option-student ${isOptionSelected(question.id, opt.id) ? 'selected' : ''}">
                     <input
                         type="radio"
@@ -233,10 +233,10 @@
                     <span class="option-text">${opt.text}</span>
                 </label>
             `).join("");
-            }
+        }
 
-            function renderEssayQuestion(question) {
-                return `
+        function renderEssayQuestion(question) {
+            return `
                 <div class="question-card-student">
                     <div class="question-header-student">
                         <div class="question-type-badge essay-badge">
@@ -259,268 +259,264 @@
                     </div>
                 </div>
             `;
+        }
+
+        // ===========================
+        // ANSWER HANDLING
+        // ===========================
+        function handleMCQSelection(questionId, optionId) {
+            if (examHasEnded) {
+                alert("Time is up! You cannot change answers anymore.");
+                return;
+            }
+            selectedAnswers[questionId] = optionId;
+            updateProgressDisplay();
+            renderAllQuestions();
+        }
+
+        function handleEssayInput(questionId, value) {
+            if (examHasEnded) {
+                alert("Time is up! You cannot change answers anymore.");
+                return;
+            }
+            if (value.trim()) {
+                selectedAnswers[questionId] = value;
+            } else {
+                delete selectedAnswers[questionId];
+            }
+            updateProgressDisplay();
+        }
+
+        function isOptionSelected(questionId, optionId) {
+            return selectedAnswers[questionId] == optionId;
+        }
+
+        // ===========================
+        // PROGRESS TRACKING
+        // ===========================
+        function updateProgressDisplay() {
+            const answered = Object.keys(selectedAnswers).length;
+            const total = examQuestionsData.length;
+            document.getElementById('examProgressText').textContent = `${answered}/${total}`;
+        }
+
+        function getUnansweredCount() {
+            const total = examQuestionsData.length;
+            const answered = Object.keys(selectedAnswers).length;
+            return total - answered;
+        }
+
+        // ===========================
+        // SUBMISSION
+        // ===========================
+        function handleSubmitClick() {
+            if (examHasEnded) {
+                alert("Time is up! The exam has ended and submissions are no longer accepted.");
+                return;
             }
 
-            // ===========================
-            // ANSWER HANDLING
-            // ===========================
-            function handleMCQSelection(questionId, optionId) {
-                if (examHasEnded) {
-                    alert("Time is up! You cannot change answers anymore.");
+            if (isSubmitting) {
+                alert("Submission in progress. Please wait...");
+                return;
+            }
+
+            const unanswered = getUnansweredCount();
+
+            if (unanswered > 0) {
+                const confirmMsg = `You have ${unanswered} unanswered question(s). Do you still want to submit?`;
+                if (!confirm(confirmMsg)) {
                     return;
                 }
-                selectedAnswers[questionId] = optionId;
-                updateProgressDisplay();
-                renderAllQuestions();
             }
 
-            function handleEssayInput(questionId, value) {
-                if (examHasEnded) {
-                    alert("Time is up! You cannot change answers anymore.");
-                    return;
-                }
-                if (value.trim()) {
-                    selectedAnswers[questionId] = value;
-                } else {
-                    delete selectedAnswers[questionId];
-                }
-                updateProgressDisplay();
+            if (confirm("Are you sure you want to submit your exam?")) {
+                submitExamToBackend();
             }
+        }
 
-            function isOptionSelected(questionId, optionId) {
-                return selectedAnswers[questionId] == optionId;
-            }
+        async function submitExamToBackend() {
+            isSubmitting = true;
+            disableSubmitButtons();
 
-            // ===========================
-            // PROGRESS TRACKING
-            // ===========================
-            function updateProgressDisplay() {
-                const answered = Object.keys(selectedAnswers).length;
-                const total = examQuestionsData.length;
-                document.getElementById('examProgressText').textContent = `${answered}/${total}`;
-            }
+            try {
+                // Prepare submission data
+                const submissionData = prepareSubmissionData();
 
-            function getUnansweredCount() {
-                const total = examQuestionsData.length;
-                const answered = Object.keys(selectedAnswers).length;
-                return total - answered;
-            }
+                // Send to backend
+                const response = await axios.post('/take-exam/submit', submissionData);
 
-            // ===========================
-            // SUBMISSION
-            // ===========================
-            function handleSubmitClick() {
-                if (examHasEnded) {
-                    alert("Time is up! The exam has ended and submissions are no longer accepted.");
-                    return;
-                }
+                // Handle response
+                handleSubmissionResponse(response.data);
 
-                if (isSubmitting) {
-                    alert("Submission in progress. Please wait...");
-                    return;
-                }
+            } catch (error) {
+                console.error("Submission error:", error);
+                handleSubmissionError(error);
 
-                const unanswered = getUnansweredCount();
-
-                if (unanswered > 0) {
-                    const confirmMsg = `You have ${unanswered} unanswered question(s). Do you still want to submit?`;
-                    if (!confirm(confirmMsg)) {
-                        return;
-                    }
-                }
-
-                if (confirm("Are you sure you want to submit your exam?")) {
-                    submitExamToBackend();
+                // Re-enable buttons if submission failed (unless time is up)
+                if (!examHasEnded) {
+                    isSubmitting = false;
+                    enableSubmitButtons();
                 }
             }
+        }
 
-            async function submitExamToBackend() {
-                isSubmitting = true;
-                disableSubmitButtons();
+        function prepareSubmissionData() {
+            const answers = Object.entries(selectedAnswers).map(([questionId, answer]) => ({
+                question_id: parseInt(questionId),
+                answer: answer
+            }));
 
-                try {
-                    // Prepare submission data
-                    const submissionData = prepareSubmissionData();
+            return {
+                exam_code: currentExamCode,
+                user_id: currentUserId,
+                answers: answers
+            };
+        }
 
-                    // Send to backend
-                    const response = await axios.post('/exams/submit', submissionData);
+        function handleSubmissionResponse(data) {
+            clearInterval(timerInterval);
 
-                    // Handle response
-                    handleSubmissionResponse(response.data);
+            let message = data.message;
 
-                } catch (error) {
-                    console.error("Submission error:", error);
-                    handleSubmissionError(error);
+            alert(message);
 
-                    // Re-enable buttons if submission failed (unless time is up)
-                    if (!examHasEnded) {
-                        isSubmitting = false;
-                        enableSubmitButtons();
-                    }
-                }
+            // Redirect to exam list or results page
+            window.location.href = "/studentSubmissionList";
+        }
+
+        function handleSubmissionError(error) {
+            if (error.response) {
+                // Show specific error message from backend
+                const errorMsg = error.response.data.detail || "Submission failed";
+                alert(errorMsg);
+            } else {
+                alert("Submission failed. Please check your connection and try again.");
             }
+        }
 
-            function prepareSubmissionData() {
-                const answers = Object.entries(selectedAnswers).map(([questionId, answer]) => ({
-                    question_id: parseInt(questionId),
-                    answer: answer
-                }));
+        // ===========================
+        // TIMER
+        // ===========================
+        async function loadExamDuration(examCode) {
+            try {
+                const res = await axios.get(`/take-exam/duration/${examCode}`);
+                const data = res.data;
+                startExamTimer(data.remaining_seconds);
 
-                return {
-                    exam_code: currentExamCode,
-                    user_id: currentUserId,
-                    answers: answers
-                };
+            } catch (error) {
+                console.error("Error loading exam duration:", error);
+                alert("Failed to load exam timer.");
             }
+        }
 
-            function handleSubmissionResponse(data) {
-                clearInterval(timerInterval);
+        function startExamTimer(remainingSeconds) {
+            const timerDisplay = document.getElementById("examTimer");
 
-                let message = data.message;
-                // message += `\n\nScore: ${data.total_score}/${data.max_score}`;
-                // if (data.grade !== "Pending") {
-                //     message += `\nGrade: ${data.grade}`;
-                // }
-
-                alert(message);
-
-                // Redirect to exam list or results page
-                window.location.href = "/studentExam";
-            }
-
-            function handleSubmissionError(error) {
-                if (error.response) {
-                    // Show specific error message from backend
-                    const errorMsg = error.response.data.detail || "Submission failed";
-                    alert(errorMsg);
-                } else {
-                    alert("Submission failed. Please check your connection and try again.");
+            // Change timer color when less than 5 minutes
+            function updateTimerStyle(seconds) {
+                if (seconds <= 300 && seconds > 60) { // 5 minutes
+                    timerDisplay.style.color = '#ff9800'; // Orange
+                } else if (seconds <= 60) { // 1 minute
+                    timerDisplay.style.color = '#dc3545'; // Red
+                    timerDisplay.style.fontWeight = 'bold';
                 }
             }
 
-            // ===========================
-            // TIMER
-            // ===========================
-            async function loadExamDuration(examCode) {
-                try {
-                    const res = await axios.get(`/exams/code/${examCode}/duration`);
-                    const data = res.data;
-                    startExamTimer(data.remaining_seconds);
+            timerInterval = setInterval(() => {
+                const timeStr = formatTime(remainingSeconds);
+                timerDisplay.textContent = `Time Left: ${timeStr}`;
 
-                } catch (error) {
-                    console.error("Error loading exam duration:", error);
-                    alert("Failed to load exam timer.");
+                updateTimerStyle(remainingSeconds);
+
+                remainingSeconds--;
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeUp(); // Handle time up scenario
                 }
+            }, 1000);
+        }
+
+        function formatTime(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+
+            return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // ===========================
+        // TIME UP HANDLING - NO AUTO SUBMIT
+        // ===========================
+        function handleTimeUp() {
+            examHasEnded = true;
+
+            // Disable all inputs
+            disableAllInputs();
+
+            // Disable submit buttons
+            disableSubmitButtons();
+
+            // Show time's up modal
+            showTimeUpModal();
+        }
+
+        function disableAllInputs() {
+            // Disable all radio buttons
+            document.querySelectorAll('input[type="radio"]').forEach(input => {
+                input.disabled = true;
+            });
+
+            // Disable all textareas
+            document.querySelectorAll('textarea').forEach(textarea => {
+                textarea.disabled = true;
+                textarea.style.backgroundColor = '#f5f5f5';
+            });
+        }
+
+        function disableSubmitButtons() {
+            const headerBtn = document.getElementById('submitBtnHeader');
+            const footerBtn = document.getElementById('submitBtnFooter');
+
+            if (headerBtn) {
+                headerBtn.disabled = true;
+                headerBtn.style.opacity = '0.5';
+                headerBtn.style.cursor = 'not-allowed';
             }
 
-            function startExamTimer(remainingSeconds) {
-                const timerDisplay = document.getElementById("examTimer");
+            if (footerBtn) {
+                footerBtn.disabled = true;
+                footerBtn.style.opacity = '0.5';
+                footerBtn.style.cursor = 'not-allowed';
+            }
+        }
 
-                // Change timer color when less than 5 minutes
-                function updateTimerStyle(seconds) {
-                    if (seconds <= 300 && seconds > 60) { // 5 minutes
-                        timerDisplay.style.color = '#ff9800'; // Orange
-                    } else if (seconds <= 60) { // 1 minute
-                        timerDisplay.style.color = '#dc3545'; // Red
-                        timerDisplay.style.fontWeight = 'bold';
-                    }
-                }
+        function enableSubmitButtons() {
+            const headerBtn = document.getElementById('submitBtnHeader');
+            const footerBtn = document.getElementById('submitBtnFooter');
 
-                timerInterval = setInterval(() => {
-                    const timeStr = formatTime(remainingSeconds);
-                    timerDisplay.textContent = `Time Left: ${timeStr}`;
-
-                    updateTimerStyle(remainingSeconds);
-
-                    remainingSeconds--;
-
-                    if (remainingSeconds <= 0) {
-                        clearInterval(timerInterval);
-                        handleTimeUp(); // Handle time up scenario
-                    }
-                }, 1000);
+            if (headerBtn) {
+                headerBtn.disabled = false;
+                headerBtn.style.opacity = '1';
+                headerBtn.style.cursor = 'pointer';
             }
 
-            function formatTime(seconds) {
-                const hrs = Math.floor(seconds / 3600);
-                const mins = Math.floor((seconds % 3600) / 60);
-                const secs = seconds % 60;
-
-                return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            if (footerBtn) {
+                footerBtn.disabled = false;
+                footerBtn.style.opacity = '1';
+                footerBtn.style.cursor = 'pointer';
             }
+        }
 
-            // ===========================
-            // TIME UP HANDLING - NO AUTO SUBMIT
-            // ===========================
-            function handleTimeUp() {
-                examHasEnded = true;
+        function showTimeUpModal() {
+            const modal = document.getElementById('timeUpModal');
+            modal.style.display = 'flex';
+        }
 
-                // Disable all inputs
-                disableAllInputs();
-
-                // Disable submit buttons
-                disableSubmitButtons();
-
-                // Show time's up modal
-                showTimeUpModal();
-            }
-
-            function disableAllInputs() {
-                // Disable all radio buttons
-                document.querySelectorAll('input[type="radio"]').forEach(input => {
-                    input.disabled = true;
-                });
-
-                // Disable all textareas
-                document.querySelectorAll('textarea').forEach(textarea => {
-                    textarea.disabled = true;
-                    textarea.style.backgroundColor = '#f5f5f5';
-                });
-            }
-
-            function disableSubmitButtons() {
-                const headerBtn = document.getElementById('submitBtnHeader');
-                const footerBtn = document.getElementById('submitBtnFooter');
-
-                if (headerBtn) {
-                    headerBtn.disabled = true;
-                    headerBtn.style.opacity = '0.5';
-                    headerBtn.style.cursor = 'not-allowed';
-                }
-
-                if (footerBtn) {
-                    footerBtn.disabled = true;
-                    footerBtn.style.opacity = '0.5';
-                    footerBtn.style.cursor = 'not-allowed';
-                }
-            }
-
-            function enableSubmitButtons() {
-                const headerBtn = document.getElementById('submitBtnHeader');
-                const footerBtn = document.getElementById('submitBtnFooter');
-
-                if (headerBtn) {
-                    headerBtn.disabled = false;
-                    headerBtn.style.opacity = '1';
-                    headerBtn.style.cursor = 'pointer';
-                }
-
-                if (footerBtn) {
-                    footerBtn.disabled = false;
-                    footerBtn.style.opacity = '1';
-                    footerBtn.style.cursor = 'pointer';
-                }
-            }
-
-            function showTimeUpModal() {
-                const modal = document.getElementById('timeUpModal');
-                modal.style.display = 'flex';
-            }
-
-            // ===========================
-            // PAGE LOAD
-            // ===========================
-            initializeExam();
+        // ===========================
+        // PAGE LOAD
+        // ===========================
+        initializeExam();
 
     </script>
 </body>

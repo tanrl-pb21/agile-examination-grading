@@ -12,24 +12,24 @@ Feature: View Student Score and Submission Details
   # ============================================================================
 
   Scenario: Retrieve valid submission with complete details
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the response contains submission details
     And the response contains exam information
     And the response contains questions list
-    And the submission has ID 21
+    And the submission has ID 219
     And the submission has student_name field
     And the submission has current_score field
 
   Scenario: Retrieve submission with all required fields
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the submission contains all required fields
     And the exam contains all required fields
     And the questions contain all required fields
 
   Scenario: Response has correct structure
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the response has exactly these keys: submission, exam, questions
     And submission is a dictionary
@@ -41,17 +41,17 @@ Feature: View Student Score and Submission Details
   # ============================================================================
 
   Scenario: Current score is within valid range
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the current_score is null or between 0 and 100
 
   Scenario: Score grade is present
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the score_grade is present
 
   Scenario: Overall feedback field exists
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the overall_feedback is null or a string
     And the overall_feedback length is less than 5000 characters
@@ -61,7 +61,7 @@ Feature: View Student Score and Submission Details
   # ============================================================================
 
   Scenario: Submitted timestamp is in valid format
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the submitted_at is a valid ISO format timestamp
 
@@ -70,7 +70,7 @@ Feature: View Student Score and Submission Details
   # ============================================================================
 
   Scenario: Pending submission shows ungraded status
-    When I retrieve submission with ID 26
+    When I retrieve submission with ID 221
     Then I receive status code 200
     And the score_grade is null or "Pending"
 
@@ -79,7 +79,7 @@ Feature: View Student Score and Submission Details
   # ============================================================================
 
   Scenario: Questions list has valid structure
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the questions list contains valid question objects
     And each question has id as integer
@@ -89,7 +89,7 @@ Feature: View Student Score and Submission Details
     And each question has student_answer field
 
   Scenario: Question types are valid
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And all question types are valid mcq or essay types
 
@@ -125,14 +125,14 @@ Feature: View Student Score and Submission Details
   # ============================================================================
 
   Scenario: Student information is preserved
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the submission has student_id field
     And the submission has student_email field
     And the student_name is a non-empty string
 
   Scenario: Exam information is preserved
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the exam has title field
     And the exam has date field
@@ -140,7 +140,7 @@ Feature: View Student Score and Submission Details
     And the exam has end_time field
 
   Scenario: Questions maintain original content
-    When I retrieve submission with ID 21
+    When I retrieve submission with ID 219
     Then I receive status code 200
     And the questions list is not empty
     And each question has non-empty question_text

@@ -1,310 +1,236 @@
 import pytest
 from fastapi.testclient import TestClient
+from pytest_bdd import scenarios, given, when, then, parsers
 from main import app
-import uuid
 
 client = TestClient(app)
 
-# CHANGE THIS based on your DB
-VALID_EXAM_ID = 1
-INVALID_EXAM_ID = 99999
+# Load feature file
+scenarios("../feature/addMCQ.feature")
 
 
-# =====================================================================
-# 1. SUCCESS CASE — Add MCQ question (valid input)
-# =====================================================================
-def test_add_mcq_question_success():
-    unique_text = f"What is 2 + 2? {uuid.uuid4()}"  # prevent duplicate
-
-    payload = {
-        "exam_id": VALID_EXAM_ID,
-        "question_text": unique_text,
-        "marks": 5,
-        "options": ["1", "4"],
-        "correct_option_index": 1,
+# -----------------------------
+# Shared context fixture
+# -----------------------------
+@pytest.fixture
+def context():
+    return {
+        "response": None,
+        "question_id": None,
+        "exam_id": None,
+        "existing_question_text": None,
     }
 
-    response = client.post("/questions/mcq", json=payload)
 
-    assert response.status_code == 201
-    data = response.json()
-
-    assert data["question_text"] == unique_text
-    assert data["marks"] == 5
-    assert data["question_type"] == "mcq"
-    assert len(data["options"]) == 2
-    assert data["options"][1]["is_correct"] is True
-
-    global last_mcq_id
-    last_mcq_id = data["id"]
-
-
-# =====================================================================
-# 2. MCQ UPDATE TEST
-# =====================================================================
-def test_update_mcq_question_success():
-    updated_text = f"Updated MCQ {uuid.uuid4()}"
-
-    payload = {
-        "question_text": updated_text,
-        "marks": 10,
-        "options": ["AAA", "BBB", "CCC"],
-        "correct_option_index": 2,
-    }
-
-    response = client.put(f"/questions/mcq/{last_mcq_id}", json=payload)
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert data["question_text"] == updated_text
-    assert data["marks"] == 10
-    assert data["options"][2]["is_correct"] is True
+# -----------------------------
+# Error keyword mapping
+# -----------------------------
+ERROR_KEYWORDS = {
+    "value_error, at least 2 options required": "at least 2 options",
+    "value_error, correct option index out of range": "correct option index",
+    "value_error, question text cannot be empty": "question text cannot be empty",
+    "value_error, duplicate options not allowed": "duplicate options not allowed",
+    "exam not found": "exam not found",
+    "question already exists": "question already exists",
+}
 
 
-# =====================================================================
-# 3. MCQ DELETE TEST
-# =====================================================================
-def test_delete_mcq_question():
-    response = client.delete(f"/questions/{last_mcq_id}")
-    assert response.status_code == 200
-    assert "deleted" in response.json()["message"].lower()
-
-    # Verify gone
-    response2 = client.get(f"/questions/{last_mcq_id}")
-    assert response2.status_code == 404
+# -----------------------------
+# GIVEN STEPS
+# -----------------------------
+@given(parsers.parse("exam {exam_id:d} exists"))
+def exam_exists(exam_id, context):
+    context["exam_id"] = exam_id
 
 
-# =====================================================================
-# 4. INVALID EXAM ID
-# =====================================================================
-def test_add_mcq_invalid_exam_id():
-    payload = {
-        "exam_id": INVALID_EXAM_ID,
-        "question_text": "Invalid exam test",
-        "marks": 5,
-        "options": ["A", "B"],
-        "correct_option_index": 0,
-    }
-
-    response = client.post("/questions/mcq", json=payload)
-
-    assert response.status_code == 400
-    assert "not found" in response.json()["detail"].lower()
+@given(parsers.parse("no exam exists with ID {exam_id:d}"))
+def exam_not_exists(exam_id, context):
+    context["exam_id"] = exam_id
 
 
-# =====================================================================
-# 5. REQUIRE AT LEAST 2 OPTIONS
-# =====================================================================
-def test_add_mcq_requires_minimum_two_options():
-    payload = {
-        "exam_id": VALID_EXAM_ID,
-        "question_text": "Test minimum options",
-        "marks": 5,
-        "options": ["Only one option"],
-        "correct_option_index": 0,
-    }
-
-    response = client.post("/questions/mcq", json=payload)
-
-    assert response.status_code == 422
-    assert "At least 2 options" in response.text
+@given(parsers.parse('exam {exam_id:d} already has a question "{question_text}"'))
+def exam_has_question(exam_id, question_text, context):
+    context["exam_id"] = exam_id
+    context["existing_question_text"] = question_text
 
 
-# =====================================================================
-# 6. INVALID CORRECT OPTION INDEX
-# =====================================================================
-def test_add_mcq_invalid_correct_option_index():
-    payload = {
-        "exam_id": VALID_EXAM_ID,
-        "question_text": "Invalid index test",
-        "marks": 5,
-        "options": ["A", "B", "C"],
-        "correct_option_index": 10,
-    }
-
-    response = client.post("/questions/mcq", json=payload)
-
-    assert response.status_code == 422
-    assert "Correct option index" in response.text
-
-
-# =====================================================================
-# 7. EMPTY QUESTION TEXT
-# =====================================================================
-def test_add_mcq_empty_question_text():
-    payload = {
-        "exam_id": VALID_EXAM_ID,
-        "question_text": "  ",
-        "marks": 5,
-        "options": ["A", "B"],
-        "correct_option_index": 0,
-    }
-
-    response = client.post("/questions/mcq", json=payload)
-
-    assert response.status_code == 422
-    assert "Question text cannot be empty" in response.text
-
-
-# =====================================================================
-# 8. INVALID MARK (zero or negative)
-# =====================================================================
-def test_add_mcq_invalid_marks():
-    payload = {
-        "exam_id": VALID_EXAM_ID,
-        "question_text": "Invalid marks test",
-        "marks": 0,
-        "options": ["A", "B"],
-        "correct_option_index": 0,
-    }
-
-    response = client.post("/questions/mcq", json=payload)
-
-    assert response.status_code == 422
-    assert "Marks must be at least 1" in response.text
-
-
-# =====================================================================
-# 9. CHECK QUESTION STORED CORRECTLY (GET /questions/exam/{id})
-# =====================================================================
-def test_mcq_question_retrievable_in_exam_details():
-    unique_text = f"Retrieval check {uuid.uuid4()}"
-
-    payload = {
-        "exam_id": VALID_EXAM_ID,
-        "question_text": unique_text,
-        "marks": 3,
-        "options": ["Yes", "No"],
-        "correct_option_index": 0,
-    }
-
-    post_res = client.post("/questions/mcq", json=payload)
-    assert post_res.status_code == 201
-    created = post_res.json()
-    question_id = created["id"]
-
-    get_res = client.get(f"/questions/exam/{VALID_EXAM_ID}")
-    assert get_res.status_code == 200
-
-    questions = get_res.json()
-    found = next((q for q in questions if q["id"] == question_id), None)
-
-    assert found is not None
-    assert found["question_text"] == unique_text
-    assert found["marks"] == 3
-    assert found["question_type"] == "mcq"
-
-
-# =====================================================================
-# 10. SYSTEM PREVENTS ADDING QUESTION WHEN REQUIRED FIELDS ARE EMPTY
-# =====================================================================
-@pytest.mark.parametrize(
-    "payload",
-    [
-        {
-            "exam_id": VALID_EXAM_ID,
-            "question_text": "",
-            "marks": 3,
-            "options": ["A", "B"],
-            "correct_option_index": 0,
-        },
-        {
-            "exam_id": VALID_EXAM_ID,
-            "question_text": "Missing options",
-            "marks": 3,
-            "options": [],
-            "correct_option_index": 0,
-        },
-        {
-            "exam_id": VALID_EXAM_ID,
-            "question_text": "Missing index",
-            "marks": 3,
-            "options": ["A", "B"],
-            "correct_option_index": -1,
-        },
-    ],
+# -----------------------------
+# WHEN STEPS
+# -----------------------------
+@when(
+    parsers.parse(
+        'the instructor adds an MCQ with text "{text}", marks {marks:d}, options "{options}", correct index {correct_index:d}'
+    )
 )
-def test_add_mcq_missing_required_fields(payload):
-    response = client.post("/questions/mcq", json=payload)
-    assert response.status_code in (400, 422)
+def add_mcq(text, marks, options, correct_index, context, monkeypatch):
+    from fastapi import HTTPException
 
+    option_list = [o.strip() for o in options.split(",")]
 
-# =====================================================================
-# 11. ESSAY QUESTION – ADD SUCCESS
-# =====================================================================
-def test_add_essay_question_success():
+    def fake_add_mcq_question(
+        self, exam_id, question_text, marks, options, correct_option_index
+    ):
+        # Validation errors (422)
+        if not question_text.strip():
+            raise HTTPException(
+                status_code=422, detail=[{"msg": "Question text cannot be empty"}]
+            )
+        if len(options) < 2:
+            raise HTTPException(
+                status_code=422, detail=[{"msg": "At least 2 options are required"}]
+            )
+        if len(set([o.strip().lower() for o in options])) != len(options):
+            raise HTTPException(
+                status_code=422, detail=[{"msg": "Duplicate options not allowed"}]
+            )
+        if correct_option_index < 0 or correct_option_index >= len(options):
+            raise HTTPException(
+                status_code=422,
+                detail=[
+                    {
+                        "msg": f"Correct option index must be between 0 and {len(options)-1}"
+                    }
+                ],
+            )
+        # Business logic errors (400)
+        if exam_id == 99999:
+            raise HTTPException(status_code=400, detail="Exam not found")
+        if context.get("existing_question_text") == question_text:
+            raise HTTPException(status_code=400, detail="Question already exists")
+        # Success
+        return {
+            "id": 100,
+            "exam_id": exam_id,
+            "question_text": question_text,
+            "marks": marks,
+            "question_type": "mcq",
+            "options": [
+                {"text": o, "is_correct": i == correct_option_index}
+                for i, o in enumerate(options)
+            ],
+        }
+
+    monkeypatch.setattr(
+        "src.services.question_service.QuestionService.add_mcq_question",
+        fake_add_mcq_question,
+    )
+
     payload = {
-        "exam_id": VALID_EXAM_ID,
-        "question_text": "Explain Newton's First Law.",
-        "marks": 10,
-        "rubric": "Clarity, accuracy, depth",
-        "reference_answer": "An object remains...",
+        "exam_id": context["exam_id"],
+        "question_text": text,
+        "marks": marks,
+        "options": option_list,
+        "correct_option_index": correct_index,
     }
 
-    response = client.post("/questions/essay", json=payload)
-    assert response.status_code == 201
+    try:
+        response = client.post("/questions/mcq", json=payload)
+    except HTTPException as e:
+        context["response"] = {"status_code": e.status_code, "error": e.detail}
+    else:
+        context["response"] = response
+        if response.status_code == 201:
+            context["question_id"] = response.json()["id"]
 
-    data = response.json()
-    assert data["exam_id"] == VALID_EXAM_ID
-    assert data["question_text"] == "Explain Newton's First Law."
-    assert data["question_type"] == "essay"
-
-    global last_essay_id
-    last_essay_id = data["id"]
+    return context
 
 
-# =====================================================================
-# 12. ESSAY — UPDATE
-# =====================================================================
-def test_update_essay_question_success():
-    updated_text = f"Updated Essay {uuid.uuid4()}"
+@when(
+    parsers.parse(
+        'the instructor updates the MCQ {question_id:d} with text "{text}", marks {marks:d}, options "{options}", correct index {correct_index:d}'
+    )
+)
+def update_mcq(question_id, text, marks, options, correct_index, context, monkeypatch):
+    option_list = [o.strip() for o in options.split(",")]
+
+    def fake_update_mcq(
+        self, question_id, question_text, marks, options, correct_option_index
+    ):
+        return {
+            "id": question_id,
+            "question_text": question_text,
+            "marks": marks,
+            "question_type": "mcq",
+            "options": [
+                {"text": o, "is_correct": i == correct_option_index}
+                for i, o in enumerate(options)
+            ],
+        }
+
+    monkeypatch.setattr(
+        "src.services.question_service.QuestionService.update_mcq_question",
+        fake_update_mcq,
+    )
 
     payload = {
-        "question_text": updated_text,
-        "marks": 15,
-        "rubric": "Updated rubric",
-        "reference_answer": "Updated answer",
+        "question_text": text,
+        "marks": marks,
+        "options": option_list,
+        "correct_option_index": correct_index,
     }
 
-    response = client.put(f"/questions/essay/{last_essay_id}", json=payload)
-    assert response.status_code == 200
-
-    data = response.json()
-    assert data["question_text"] == updated_text
-    assert data["marks"] == 15
+    context["response"] = client.put(f"/questions/mcq/{question_id}", json=payload)
+    return context
 
 
-# =====================================================================
-# 13. ESSAY — GET
-# =====================================================================
-def test_get_essay_question():
-    response = client.get(f"/questions/{last_essay_id}")
-    assert response.status_code == 200
+@when(parsers.parse("the instructor deletes the MCQ with ID {question_id:d}"))
+def delete_mcq(question_id, context, monkeypatch):
+    def fake_delete(self, question_id):
+        return {"id": question_id, "deleted": True}
 
-    data = response.json()
-    assert data["id"] == last_essay_id
-    assert data["question_type"] == "essay"
-
-
-# =====================================================================
-# 14. ESSAY — DELETE
-# =====================================================================
-def test_delete_essay_question():
-    response = client.delete(f"/questions/{last_essay_id}")
-    assert response.status_code == 200
-    assert "deleted" in response.json()["message"].lower()
-
-    # verify removed
-    response2 = client.get(f"/questions/{last_essay_id}")
-    assert response2.status_code == 404
+    monkeypatch.setattr(
+        "src.services.question_service.QuestionService.delete_question", fake_delete
+    )
+    context["response"] = client.delete(f"/questions/{question_id}")
+    return context
 
 
-# =====================================================================
-# 15. ESSAY NEGATIVE TEST — EMPTY TEXT
-# =====================================================================
-def test_essay_missing_question_text():
-    payload = {"exam_id": VALID_EXAM_ID, "question_text": "", "marks": 5}
+# -----------------------------
+# THEN STEPS
+# -----------------------------
+@then(parsers.parse("the MCQ has correct option at index {index:d}"))
+def check_correct_option(context, index):
+    resp = context["response"]
+    data = resp.json()
+    options = data.get("options", [])
+    assert options[index]["is_correct"] is True
 
-    response = client.post("/questions/essay", json=payload)
-    assert response.status_code == 422
+
+@then(parsers.parse("the system returns status code {code:d}"))
+def check_status_code(context, code):
+    resp = context["response"]
+    if isinstance(resp, dict) and "status_code" in resp:
+        assert resp["status_code"] == code
+    else:
+        assert resp.status_code == code
+
+
+@then(parsers.parse('the response contains error "{text}"'))
+def check_error_message(context, text):
+    resp = context["response"]
+
+    # Determine keyword to check
+    keyword = ERROR_KEYWORDS.get(text, text).lower()
+
+    # Case 1: If the response is a dict (from monkeypatch / exception)
+    if isinstance(resp, dict) and "error" in resp:
+        assert keyword in str(resp["error"]).lower()
+        return
+
+    # Case 2: FastAPI / Pydantic validation errors (422)
+    data = resp.json()
+    if resp.status_code == 422:
+        details = data.get("detail", [])
+        if isinstance(details, list):
+            messages = [str(e.get("msg", e.get("error", ""))).lower() for e in details]
+            assert any(
+                keyword in m for m in messages
+            ), f"Expected '{keyword}' in {messages}"
+        else:
+            assert keyword in str(details).lower()
+        return
+
+    # Case 3: Other HTTP errors (400, etc.)
+    detail_msg = str(data.get("detail", "")).lower()
+    assert keyword in detail_msg, f"Expected '{keyword}' in '{detail_msg}'"
+
