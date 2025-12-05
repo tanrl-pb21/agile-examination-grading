@@ -25,11 +25,7 @@ jobs:
       - name: Inject Environment Variables
         run: |
           cd backend
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "SUPABASE_DB_URL=postgres://fake" > .env
-          else
-            echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
-          fi
+          echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}" > .env
 
       - name: Run Full Test Suite with Coverage
         run: |
