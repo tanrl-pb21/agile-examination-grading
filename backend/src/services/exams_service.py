@@ -82,6 +82,47 @@ def time_overlap(start1, end1, start2, end2):
 
 
 class ExamService:
+    def search_exams_by_title(self, search_term: str):
+        """
+        Search exams by title (case-insensitive, partial match).
+        Returns exams where title contains the search term.
+        """
+        if not search_term or len(search_term.strip()) == 0:
+            raise ValueError("Search term is required")
+        
+        search_term = search_term.strip()
+        
+        sql = """
+            SELECT id, title, exam_code, course, date, start_time, end_time, duration, status
+            FROM exams
+            WHERE LOWER(title) LIKE LOWER(%s)
+            ORDER BY date DESC, start_time DESC
+            LIMIT 100;
+        """
+        
+        try:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    # Use % wildcards for partial matching
+                    cur.execute(sql, (f"%{search_term}%",))
+                    rows = cur.fetchall()
+            
+            # Convert time objects to strings
+            if rows:
+                for row in rows:
+                    if row["start_time"] and not isinstance(row["start_time"], str):
+                        row["start_time"] = row["start_time"].strftime("%H:%M")
+                    if row["end_time"] and not isinstance(row["end_time"], str):
+                        row["end_time"] = row["end_time"].strftime("%H:%M")
+            
+            return rows if rows else []
+            
+        except Exception as e:
+            print(f"ERROR in search_exams_by_title: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return []
+    
     def get_available_exams_for_student(self, student_id: int) -> list:
         """
         Get exams currently open (start_time <= now <= end_time) 
