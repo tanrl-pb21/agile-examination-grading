@@ -84,8 +84,10 @@ class ExamCreate(BaseModel):
         if end_dt <= start_dt:
             raise ValueError("End time must be after start time")
 
-        if start_dt < now:
-            raise ValueError("Exam start time cannot be in the past")
+        if self.status in ["scheduled", "published"]:
+            now = datetime.now()
+            if start_dt < now:
+                raise ValueError("Exam start time cannot be in the past")
 
         return self
 
@@ -412,6 +414,72 @@ def filter_student_exams_by_status(student_id: int, status: str):
         
         exams = service.filter_student_exams_by_status(student_id, status)
         return [convert_time_to_string(exam) for exam in exams] if exams else []
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@router.get("/{exam_id}/can-publish")
+def check_can_publish_exam(exam_id: int):
+    """
+    Check if an exam can be published without actually publishing it.
+    Returns validation info.
+    """
+    try:
+        result = service.can_publish_exam(exam_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{exam_id}/publish")
+def publish_exam_route(exam_id: int):
+    """
+    Publish an exam (change status to 'published').
+    Only works if exam has questions and date/time is in future.
+    """
+    try:
+        exam = service.publish_exam(exam_id)
+        return {
+            "message": "Exam published successfully",
+            "exam": convert_time_to_string(exam)
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.patch("/{exam_id}/status")
+def update_exam_status(exam_id: int, status: str):
+    """
+    Update only the exam status without validation.
+    Used for auto-updating completed exams.
+    
+    Query parameter:
+    - status: The new status (scheduled, published, completed, cancelled)
+    """
+    try:
+        valid_statuses = ["scheduled", "published", "completed", "cancelled"]
+        
+        if not status or status.strip().lower() not in valid_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Status must be one of: {', '.join(valid_statuses)}"
+            )
+        
+        status = status.strip().lower()
+        
+        # Call service method to update only status
+        exam = service.update_exam_status(exam_id, status)
+        
+        if not exam:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        
+        return convert_time_to_string(exam)
+        
     except HTTPException:
         raise
     except ValueError as e:
