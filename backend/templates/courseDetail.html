@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/style.css">
+
+    <title>Course Details - Advanced Mathematics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            height: 100vh;
+        }
+
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+        }
+
+        .course-header {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .course-title-section {
+            display: flex;
+            align-items: start;
+            gap: 20px;
+        }
+
+        .course-icon-large {
+            width: 60px;
+            height: 60px;
+            background-color: #d1fae5;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .course-icon-large svg {
+            width: 32px;
+            height: 32px;
+            color: #059669;
+        }
+
+        .course-title-info h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .course-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .course-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            background-color: #d1fae5;
+            color: #059669;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-secondary {
+            background-color: #f3f4f6;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e5e7eb;
+        }
+
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        .instructor-students {
+            display: flex;
+            gap: 24px;
+            font-size: 14px;
+            color: #999;
+        }
+
+        .instructor-students span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .instructor-students svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .course-stats {
+            display: flex;
+            gap: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e5e5;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .content-body {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 24px;
+            padding: 30px 40px;
+        }
+
+        .main-section {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .card {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+        }
+
+        .card-description {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #666;
+        }
+
+        .student-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .student-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+
+        .student-item:hover {
+            background-color: #f9fafb;
+        }
+
+        .student-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .student-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .student-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .student-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin-bottom: 2px;
+        }
+
+        .student-email {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .student-grade-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .student-grade {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 2px;
+        }
+
+        .student-enrolled {
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        } */
+
+        .exam-item {
+            padding: 16px;
+            border-radius: 6px;
+            background-color: #f9fafb;
+            transition: background-color 0.2s;
+        }
+
+        .exam-item:hover {
+            background-color: #f3f4f6;
+        }
+
+        .exam-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .exam-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .exam-detail {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .exam-detail svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .exam-type {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-top: 8px;
+        }
+
+        .exam-type.written {
+            background-color: #dbeafe;
+            color: #3b82f6;
+        }
+
+        .exam-type.online {
+            background-color: #d1fae5;
+            color: #059669;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        .modal-icon {
+            width: 56px;
+            height: 56px;
+            background-color: #fee2e2;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+        .modal-icon svg {
+            width: 28px;
+            height: 28px;
+            color: #ef4444;
+        }
+
+        .modal-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1a1a1a;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .modal-description {
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 28px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .modal-btn-cancel {
+            background-color: #f3f4f6;
+            color: #666;
+        }
+
+        .modal-btn-cancel:hover {
+            background-color: #e5e7eb;
+        }
+
+        .modal-btn-confirm {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .modal-btn-confirm:hover {
+            background-color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1>Exam Management</h1>
+            <p>Teacher Dashboard</p>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="/examManagement" class="nav-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M9 9h6M9 13h6M9 17h4"/>
+                </svg>
+                Examinations
+            </a>
+            <a href="/studentExam" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                Students
+            </a>
+            <a href="#" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                </svg>
+                Reports
+            </a>
+            <a href="#" class="nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Settings
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="user-avatar">T</div>
+            <div class="user-info">
+                <h4>Teacher</h4>
+                <p>teacher@school.edu</p>
+            </div>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <div class="course-header">
+            <div class="header-top">
+                <div class="course-title-section">
+                    <div class="course-icon-large">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                        </svg>
+                    </div>
+                    <div class="course-title-info">
+                        <h1>Advanced Mathematics</h1>
+                        <div class="course-meta">
+                            <span>MATH301 • Mathematics</span>
+                            <span class="status-badge">active</span>
+                        </div>
+                        <div class="instructor-students">
+                            <span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                                Dr. Sarah Johnson
+                            </span>
+                            <span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                                45 Students
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        Edit Course
+                    </button>
+                    <button class="btn btn-danger" onclick="openModal()">Deactivate</button>
+                </div>
+            </div>
+
+            <div class="course-stats">
+                <div class="stat-item">
+                    <!-- <div class="stat-label">Duration</div>
+                    <div class="stat-value">16 weeks</div> -->
+                </div>
+                <div class="stat-item">
+                    <!-- <div class="stat-label">Credits</div>
+                    <div class="stat-value">4 Credits</div> -->
+                </div>
+                <div class="stat-item">
+                    <!-- <div class="stat-label">Schedule</div>
+                    <div class="stat-value">Mon, Wed, Fri - 10:00 AM to 11:30 AM</div> -->
+                </div>
+            </div>
+        </div>
+
+        <div class="content-body">
+            <div class="main-section">
+                <div class="card">
+                    <div class="card-title">Course Description</div>
+                    <div class="card-description">
+                        This comprehensive course covers advanced mathematical concepts including calculus, linear algebra, differential equations, and their applications in real-world scenarios. Students will develop strong analytical and problem-solving skills.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Enrolled Students</div>
+                    <div class="student-list" id="studentList"></div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="card">
+                    <div class="card-title">Upcoming Exams</div>
+                    <div id="examsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deactivate Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <h2 class="modal-title">Deactivate Course?</h2>
+            <p class="modal-description">
+                This course will no longer be available for enrollment. Students already enrolled will retain access.
+            </p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" onclick="confirmDeactivate()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const students = [
+            { name: 'John Smith', email: 'john.smith@email.com', grade: 'A', enrolled: '2024-01-15', avatar: 'J', color: '#cffafe' },
+            { name: 'Emma Johnson', email: 'emma.j@email.com', grade: 'B+', enrolled: '2024-01-16', avatar: 'E', color: '#dbeafe' },
+            { name: 'Michael Brown', email: 'michael.b@email.com', grade: 'A-', enrolled: '2024-01-15', avatar: 'M', color: '#d1fae5' },
+            { name: 'Sophia Davis', email: 'sophia.d@email.com', grade: 'B', enrolled: '2024-01-17', avatar: 'S', color: '#e0e7ff' },
+            { name: 'William Wilson', email: 'william.w@email.com', grade: 'A', enrolled: '2024-01-18', avatar: 'W', color: '#ccfbf1' }
+        ];
+
+        const exams = [
+            { title: 'Midterm Exam', date: '2024-02-15', duration: '2 hours', type: 'written' },
+            { title: 'Quiz 3', date: '2024-02-20', duration: '30 minutes', type: 'online' },
+            { title: 'Final Exam', date: '2024-03-10', duration: '3 hours', type: 'written' }
+        ];
+
+        function renderStudents() {
+            const studentList = document.getElementById('studentList');
+            studentList.innerHTML = students.map(student => `
+                <div class="student-item">
+                    <div class="student-info">
+                        <div class="student-avatar" style="background-color: ${student.color}; color: #047857;">
+                            ${student.avatar}
+                        </div>
+                        <div class="student-details">
+                            <div class="student-name">${student.name}</div>
+                            <div class="student-email">${student.email}</div>
+                        </div>
+                    </div>
+                    <div class="student-grade-info">
+                        <div class="student-grade">${student.grade}</div>
+                        <div class="student-enrolled">Enrolled: ${student.enrolled}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderExams() {
+            const examsList = document.getElementById('examsList');
+            examsList.innerHTML = exams.map(exam => `
+                <div class="exam-item">
+                    <div class="exam-title">${exam.title}</div>
+                    <div class="exam-details">
+                        <div class="exam-detail">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            ${exam.date}
+                        </div>
+                        <div class="exam-detail">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            ${exam.duration}
+                        </div>
+                    </div>
+                    <span class="exam-type ${exam.type}">${exam.type.charAt(0).toUpperCase() + exam.type.slice(1)}</span>
+                </div>
+            `).join('');
+        }
+
+        function openModal() {
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        function confirmDeactivate() {
+            alert('Course has been deactivated');
+            closeModal();
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        renderStudents();
+        renderExams();
+    </script>
+</body>
+</html>

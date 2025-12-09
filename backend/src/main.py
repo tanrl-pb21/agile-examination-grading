@@ -97,3 +97,12 @@ def student_submission_review(request: Request, id: int, userId: int):
 @app.get("/examManagement", response_class=HTMLResponse)
 def exam_management(request: Request):
     return templates.TemplateResponse("examManagement.html", {"request": request})
+
+@app.get("/courseManagement", response_class=HTMLResponse)
+def exam_management(request: Request):
+    return templates.TemplateResponse("courseManagement.html", {"request": request})
+
+@app.get("/courseDetail", response_class=HTMLResponse)
+def exam_management(request: Request):
+    return templates.TemplateResponse("courseDetail.html", {"request": request})
+
