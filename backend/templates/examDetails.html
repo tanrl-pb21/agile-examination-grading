@@ -394,7 +394,10 @@
 
 
     <script>
-        checkAccess(["instructor"]);
+        document.addEventListener("DOMContentLoaded", function () {
+            checkAccess(["teacher"]);
+            updateSidebarUserInfo();
+        });
         const urlParams = new URLSearchParams(window.location.search);
         const examId = urlParams.get('id');
        

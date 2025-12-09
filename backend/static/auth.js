@@ -1,7 +1,6 @@
-function checkAccess(allowedRoles) {
+// auth.js
+window.checkAccess = function(allowedRoles) {
     const raw = localStorage.getItem("user_info");
-
-    // ❌ User not logged in
     if (!raw) {
         Swal.fire({
             icon: 'warning',
@@ -15,8 +14,6 @@ function checkAccess(allowedRoles) {
     }
 
     const user = JSON.parse(raw);
-
-    // ❌ Role does not match (Unauthorized)
     if (!allowedRoles.includes(user.role)) {
         Swal.fire({
             icon: 'error',
@@ -28,6 +25,26 @@ function checkAccess(allowedRoles) {
         });
         return;
     }
+}
 
-    // ✅ Access allowed (nothing happens)
+window.updateSidebarUserInfo = function() {
+    const userInfo = JSON.parse(localStorage.getItem("user_info"));
+    if (!userInfo) return;
+
+    const emailEl = document.querySelector(".user-info p");
+    if (emailEl) emailEl.textContent = userInfo.email;
+
+    const roleEl = document.querySelector(".user-info h4");
+    if (roleEl && userInfo.role) {
+        roleEl.textContent =
+            userInfo.role.charAt(0).toUpperCase() + userInfo.role.slice(1);
+    }
+
+    const avatarEl = document.querySelector(".user-avatar");
+    if (avatarEl) {
+        const initial = userInfo.email
+            ? userInfo.email.charAt(0).toUpperCase()
+            : "U";
+        avatarEl.textContent = initial;
+    }
 }

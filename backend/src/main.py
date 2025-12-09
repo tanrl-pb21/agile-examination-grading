@@ -122,3 +122,7 @@ def exam_management(request: Request):
 @app.get("/reset-password", response_class=HTMLResponse)
 def reset_password_page(request: Request):
     return templates.TemplateResponse("reset_password.html", {"request": request})
+
+@app.get("/studentCourse", response_class=HTMLResponse)
+def reset_password_page(request: Request):
+    return templates.TemplateResponse("studentCourse.html", {"request": request})
