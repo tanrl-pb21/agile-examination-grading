@@ -51,22 +51,37 @@ def create_mock_available_exam(
     MALAYSIA_TZ = timezone(timedelta(hours=8))
     now = datetime.now(MALAYSIA_TZ)
     
-    # Calculate times around now
-    start_time = (now - timedelta(minutes=30 + offset_minutes)).time()
-    end_time = (now + timedelta(minutes=30 + offset_minutes)).time()
+    # Calculate datetime objects around now
+    start_dt = now - timedelta(minutes=30 + offset_minutes)
+    end_dt = now + timedelta(minutes=30 + offset_minutes)
+    
+    # If start and end are on different dates (crossing midnight),
+    # adjust to keep them on the same day with current time in the middle
+    if start_dt.date() != end_dt.date():
+        # Current time is close to midnight, adjust the window
+        # to be safely within the current day
+        if now.hour == 0:  # Just after midnight (00:00 - 00:59)
+            # Set exam to span around current time, safely within today
+            # For example: if now is 00:04, make it 00:00 to 01:00
+            start_dt = datetime.combine(now.date(), time(0, 0), tzinfo=MALAYSIA_TZ)
+            end_dt = datetime.combine(now.date(), time(1, 0), tzinfo=MALAYSIA_TZ)
+        else:  # Close to midnight from the other side (23:00 - 23:59)
+            # Set exam to span around current time, safely within today
+            # For example: if now is 23:50, make it 23:00 to 23:59
+            start_dt = datetime.combine(now.date(), time(23, 0), tzinfo=MALAYSIA_TZ)
+            end_dt = datetime.combine(now.date(), time(23, 59), tzinfo=MALAYSIA_TZ)
     
     return {
         "id": exam_id,
         "title": title,
         "exam_code": exam_code,
         "course": course_id,
-        "date": now.date().isoformat(),
-        "start_time": start_time.strftime("%H:%M"),
-        "end_time": end_time.strftime("%H:%M"),
+        "date": start_dt.date().isoformat(),
+        "start_time": start_dt.strftime("%H:%M"),
+        "end_time": end_dt.strftime("%H:%M"),
         "status": "scheduled",
     }
-
-
+    
 def create_mock_upcoming_exam(
     exam_id: int,
     title: str,
@@ -88,6 +103,8 @@ def create_mock_upcoming_exam(
         "end_time": "12:00",
         "status": "scheduled",
     }
+    
+
 
 
 # ============================================================================
@@ -216,27 +233,27 @@ def step_check_available_timing(context: ExamContext) -> None:
     now = datetime.now(MALAYSIA_TZ)
     
     for exam in data:
-        start_time_str = exam["start_time"]
-        end_time_str = exam["end_time"]
+        exam_date = datetime.strptime(exam["date"], "%Y-%m-%d").date()
+        start_time = datetime.strptime(exam["start_time"], "%H:%M").time()
+        end_time = datetime.strptime(exam["end_time"], "%H:%M").time()
         
-        # Parse times
-        start_time = datetime.strptime(start_time_str, "%H:%M").time()
-        end_time = datetime.strptime(end_time_str, "%H:%M").time()
-        current_time = now.time()
+        # Combine date and time to create full datetime objects
+        start_dt = datetime.combine(exam_date, start_time, tzinfo=MALAYSIA_TZ)
+        end_dt = datetime.combine(exam_date, end_time, tzinfo=MALAYSIA_TZ)
+        
+        # Handle midnight crossing: if end_time < start_time, end is next day
+        if end_time < start_time:
+            end_dt += timedelta(days=1)
         
         # Verify current time is within window
-        assert start_time <= current_time, (
-            f"Exam {exam['title']} hasn't started yet "
-            f"(starts at {start_time}, now is {current_time})"
-        )
-        assert current_time <= end_time, (
-            f"Exam {exam['title']} has ended "
-            f"(ended at {end_time}, now is {current_time})"
+        assert start_dt <= now <= end_dt, (
+            f"Exam {exam['title']} is not currently open "
+            f"(window: {start_dt} to {end_dt}, now: {now})"
         )
     
     if len(data) > 0:
         print(f"✓ All {len(data)} exams are currently open")
-
+        
 
 @bdd_then("each upcoming exam is scheduled for the future")
 def step_check_upcoming_timing(context: ExamContext) -> None:
