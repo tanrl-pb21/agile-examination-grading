@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exam Management - Teacher Dashboard</title>
     <link rel="stylesheet" href="../static/style.css">
+    <script src="../static/auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 </head>
 <body>
@@ -82,11 +84,12 @@
                     </svg>
                     <input type="text" id="searchInput" placeholder="Search by title or exam ID..." onkeyup="filterExams()">
                 </div>
+
                 <div class="filter-dropdown">
                     <select id="statusFilter" onchange="filterExams()">
                         <option value="all">All Status</option>
-                        <option value="ongoing">Ongoing</option>
                         <option value="scheduled">Scheduled</option>
+                        <option value="published">Published</option>
                         <option value="completed">Completed</option>
                     </select>
                 </div>
@@ -97,13 +100,13 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>TITLE</th>
-                            <th>EXAM ID</th>
-                            <th>DATE</th>
-                            <th>START TIME</th>
-                            <th>END TIME</th>
-                            <th>DURATION</th>
-                            <th>STATUS</th>
+                            <th class="sortable" onclick="sortTable('title')">TITLE</th>
+                            <th class="sortable" onclick="sortTable('exam_code')">EXAM ID</th>
+                            <th class="sortable" onclick="sortTable('date')">DATE</th>
+                            <th class="sortable" onclick="sortTable('start_time')">START TIME</th>
+                            <th class="sortable" onclick="sortTable('end_time')">END TIME</th>
+                            <th class="sortable" onclick="sortTable('duration')">DURATION</th>
+                            <th class="sortable" onclick="sortTable('status')">STATUS</th>
                             <th>ACTIONS</th>
                         </tr>
                     </thead>
@@ -180,8 +183,103 @@
     </div>
 
     <script>
+        checkAccess(["instructor"]);
         let exams = [];
         let courses = [];
+
+        let currentSort = { column: 'date', direction: 'desc' };
+
+        function sortTable(column) {
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+
+            const displayedExams = getFilteredExams();
+            sortExamsArray(displayedExams, column, currentSort.direction);
+            renderExams(displayedExams);
+            updateSortIndicators();
+        }
+
+        function sortExamsArray(array, column, direction) {
+            array.sort((a, b) => {
+                let valA, valB;
+
+                switch(column) {
+                    case 'title':
+                        valA = (a.title || '').toLowerCase();
+                        valB = (b.title || '').toLowerCase();
+                        break;
+                    case 'exam_code':
+                        valA = (a.exam_code || '').toLowerCase();
+                        valB = (b.exam_code || '').toLowerCase();
+                        break;
+                    case 'date':
+                        valA = new Date(a.date || '1900-01-01');
+                        valB = new Date(b.date || '1900-01-01');
+                        break;
+                    case 'start_time':
+                        valA = a.start_time || '00:00';
+                        valB = b.start_time || '00:00';
+                        break;
+                    case 'end_time':
+                        valA = a.end_time || '00:00';
+                        valB = b.end_time || '00:00';
+                        break;
+                    case 'duration':
+                        valA = a.duration || 0;
+                        valB = b.duration || 0;
+                        break;
+                    case 'status':
+                        valA = (a.status || '').toLowerCase();
+                        valB = (b.status || '').toLowerCase();
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (valA < valB) return direction === 'asc' ? -1 : 1;
+                if (valA > valB) return direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function updateSortIndicators() {
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
+            });
+
+            const columnMap = {
+                'title': 0,
+                'exam_code': 1,
+                'date': 2,
+                'start_time': 3,
+                'duration': 5,
+                'status': 6
+            };
+
+            const columnIndex = columnMap[currentSort.column];
+            if (columnIndex !== undefined) {
+                const th = document.querySelectorAll('th.sortable')[columnIndex];
+                if (th) {
+                    th.classList.add(currentSort.direction);
+                }
+            }
+        }
+
+        function getFilteredExams() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+            
+            return exams.filter(exam => {
+                const matchSearch = (exam.title && exam.title.toLowerCase().includes(search)) || 
+                                (exam.exam_code && exam.exam_code.toLowerCase().includes(search));
+                const matchStatus = status === 'all' || exam.status === status;
+                return matchSearch && matchStatus;
+            });
+        }
 
         // Configure axios with proper timeout and error handling
         // axios.defaults.baseURL = 'http://localhost:8000';
@@ -191,6 +289,54 @@
         async function initializeData() {
             await Promise.all([loadCourses(), loadExams()]);
         }
+
+        async function checkCanPublish(examId) {
+            try {
+                const response = await axios.get(`/exams/${examId}/can-publish`);
+                return response.data; // Returns {can_publish, message, question_count}
+            } catch (error) {
+                console.error('Error checking publish status:', error);
+                return {
+                    can_publish: false,
+                    message: 'Error checking publish status',
+                    question_count: 0
+                };
+            }
+        }
+
+        async function publishExam(examId) {
+    try {
+        // First check if can publish
+        const validation = await checkCanPublish(examId);
+        
+        if (!validation.can_publish) {
+            alert(`Cannot publish: ${validation.message}\n\nQuestions in exam: ${validation.question_count}`);
+            return false;
+        }
+        
+        // Confirm with user
+        const confirmMsg = `Publish this exam?\n\n${validation.message}\nQuestions: ${validation.question_count}`;
+        if (!confirm(confirmMsg)) {
+            return false;
+        }
+        
+        // Publish the exam
+        const response = await axios.post(`/exams/${examId}/publish`);
+        
+        alert(`✅ ${response.data.message}`);
+        
+        // Reload exams or update UI
+        await loadExams();
+        return true;
+        
+    } catch (error) {
+        console.error('Publish exam error:', error);
+        const errorMsg = error.response?.data?.detail || error.message;
+        alert(`❌ Failed to publish exam: ${errorMsg}`);
+        return false;
+    }
+}
+
 
        async function loadCourses() {
             try {
@@ -274,144 +420,165 @@
         }
 
         async function loadExams() {
-            const tbody = document.getElementById('examTableBody');
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">Loading exams...</td></tr>`;
-            
-            try {
-                console.log('Fetching exams...');
-                const response = await axios.get('/exams');
-                
-                if (!response.data) {
-                    throw new Error('No data returned from exams endpoint');
-                }
-
-                exams = Array.isArray(response.data) ? response.data : [];
-                console.log('Exams loaded:', exams);
-                renderExams(exams);
-            } catch (error) {
-                console.error('Failed to load exams:', error);
-                const errorMsg = error.response?.status === 404 
-                    ? 'Exams endpoint not found' 
-                    : error.message;
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red">Failed to load exams: ${errorMsg}</td></tr>`;
-            }
+    const tbody = document.getElementById('examTableBody');
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center">Loading exams...</td></tr>`;
+    
+    try {
+        console.log('Fetching exams...');
+        const response = await axios.get('/exams');
+        
+        if (!response.data) {
+            throw new Error('No data returned from exams endpoint');
         }
+
+        exams = Array.isArray(response.data) ? response.data : [];
+        console.log('Exams loaded:', exams);
+
+        sortExamsArray(exams, currentSort.column, currentSort.direction);
+        updateSortIndicators();
+        
+        // Check and update completed exams
+        await checkAndUpdateCompletedExams();
+        
+        renderExams(exams);
+    } catch (error) {
+        console.error('Failed to load exams:', error);
+        const errorMsg = error.response?.status === 404 
+            ? 'Exams endpoint not found' 
+            : error.message;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red">Failed to load exams: ${errorMsg}</td></tr>`;
+    }
+}
+
+// Check for completed exams every 30 seconds (optional - for real-time updates)
+setInterval(checkAndUpdateCompletedExams, 30000);
+
+// Also check when page becomes visible (user switches back to tab)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        checkAndUpdateCompletedExams();
+    }
+});
 
         // In your saveExam function, replace the time reading part:
 
         async function saveExam(e) {
-            e.preventDefault();
+    e.preventDefault();
 
-            const editId = document.getElementById('examEditId').value;
-            
-            // Get raw time values from input (format: HH:MM in 24-hour)
-            const startTimeRaw = document.getElementById('examStartTime').value;
-            const endTimeRaw = document.getElementById('examEndTime').value;
-            
-            const errorContainer = document.getElementById('errorContainer');
+    const editId = document.getElementById('examEditId').value;
+    
+    // Get raw time values from input (format: HH:MM in 24-hour)
+    const startTimeRaw = document.getElementById('examStartTime').value;
+    const endTimeRaw = document.getElementById('examEndTime').value;
+    
+    const errorContainer = document.getElementById('errorContainer');
 
-            // Clear previous errors
-            errorContainer.style.display = 'none';
-            errorContainer.innerHTML = '';
+    // Clear previous errors
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
 
-            // Validate times exist
-            if (!startTimeRaw || !endTimeRaw) {
-                showFormError('Start time and end time are required');
-                return;
+    // Validate times exist
+    if (!startTimeRaw || !endTimeRaw) {
+        showFormError('Start time and end time are required');
+        return;
+    }
+
+    // Validate time format (should be HH:MM)
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(startTimeRaw) || !timeRegex.test(endTimeRaw)) {
+        showFormError('Time must be in valid HH:MM format');
+        return;
+    }
+
+    // Compare times
+    if (startTimeRaw >= endTimeRaw) {
+        showFormError('End time must be after start time');
+        return;
+    }
+
+    const examData = {
+        title: document.getElementById('examTitle').value.trim(),
+        exam_code: document.getElementById('examIdInput').value.trim(),
+        date: document.getElementById('examDate').value,
+        start_time: startTimeRaw,
+        end_time: endTimeRaw,
+        status: 'scheduled',
+        course: document.getElementById('courseCode').value,
+    };
+
+    // Validate all required fields
+    if (!examData.title || !examData.exam_code || !examData.date || !examData.course) {
+        showFormError('All fields are required');
+        return;
+    }
+
+    try {
+        let response;
+        const url = editId ? `/exams/${editId}` : '/exams';
+        const method = editId ? axios.put : axios.post;
+
+        console.log(`${editId ? 'Updating' : 'Creating'} exam:`, examData);
+        response = await method(url, examData);
+
+        const savedExam = response.data;
+        console.log('Exam saved successfully:', savedExam);
+
+        if (editId) {
+            const idx = exams.findIndex(e => e.id === parseInt(editId));
+            if (idx > -1) {
+                exams[idx] = savedExam;
             }
-
-            // Validate time format (should be HH:MM)
-            const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-            if (!timeRegex.test(startTimeRaw) || !timeRegex.test(endTimeRaw)) {
-                showFormError('Time must be in valid HH:MM format');
-                return;
-            }
-
-            // Compare times
-            if (startTimeRaw >= endTimeRaw) {
-                showFormError('End time must be after start time');
-                return;
-            }
-
-            const examData = {
-                title: document.getElementById('examTitle').value.trim(),
-                exam_code: document.getElementById('examIdInput').value.trim(),
-                date: document.getElementById('examDate').value,
-                start_time: startTimeRaw,  // Send as HH:MM format
-                end_time: endTimeRaw,      // Send as HH:MM format
-                status: 'scheduled',
-                course: document.getElementById('courseCode').value,
-            };
-
-            // Validate all required fields
-            if (!examData.title || !examData.exam_code || !examData.date || !examData.course) {
-                showFormError('All fields are required');
-                return;
-            }
-
-            try {
-                let response;
-                const url = editId ? `/exams/${editId}` : '/exams';
-                const method = editId ? axios.put : axios.post;
-
-                console.log(`${editId ? 'Updating' : 'Creating'} exam:`, examData);
-                response = await method(url, examData);
-
-                const savedExam = response.data;
-                console.log('Exam saved successfully:', savedExam);
-
-                if (editId) {
-                    const idx = exams.findIndex(e => e.id === parseInt(editId));
-                    if (idx > -1) {
-                        exams[idx] = savedExam;
-                    }
-                    alert('Exam updated successfully!');
-                } else {
-                    exams.push(savedExam);
-                    alert('Exam created successfully!');
-                }
-
-                renderExams(exams);
-                closeModal();
-            } catch (error) {
-                console.error('Save exam error:', error);
-                let errorMsg = 'An error occurred while saving the exam';
-
-                const startTimeRaw = document.getElementById('examStartTime').value;
-                const endTimeRaw = document.getElementById('examEndTime').value;
-
-                // DEBUG: Log exactly what we're sending
-                console.log('=== TIME DEBUG ===');
-                console.log('Start time raw value:', startTimeRaw);
-                console.log('Start time type:', typeof startTimeRaw);
-                console.log('Start time length:', startTimeRaw.length);
-                console.log('End time raw value:', endTimeRaw);
-                console.log('=== END DEBUG ===');
-
-                // Check if it matches HH:MM format
-                const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-                console.log('Start time matches HH:MM?', timeRegex.test(startTimeRaw));
-                console.log('End time matches HH:MM?', timeRegex.test(endTimeRaw));
-
-                if (error.response) {
-                    if (error.response.status === 422) {
-                        const errors = error.response.data.detail;
-                        errorMsg = 'Validation errors:\n\n' + 
-                            errors.map(err => `• ${err.loc[err.loc.length - 1]}: ${err.msg}`).join('\n');
-                    } else if (error.response.status === 400) {
-                        errorMsg = error.response.data.detail || 'Bad request';
-                    } else {
-                        errorMsg = `Server error (${error.response.status}): ${error.response.statusText}`;
-                    }
-                } else if (error.request) {
-                    errorMsg = 'No response from server. Check your connection.';
-                } else {
-                    errorMsg = `Network error: ${error.message}`;
-                }
-
-                showFormError(errorMsg);
-            }
+            alert('Exam updated successfully!');
+        } else {
+            exams.push(savedExam);
+            alert('Exam created successfully!');
         }
+
+        renderExams(exams);
+        closeModal();
+    } catch (error) {
+        console.error('Save exam error:', error);
+        let errorMsg = 'An error occurred while saving the exam';
+
+        if (error.response) {
+            if (error.response.status === 422) {
+                // ✅ IMPROVED: Clean formatting for validation errors
+                const errors = error.response.data.detail;
+                
+                if (Array.isArray(errors)) {
+                    // Extract just the error messages without field paths
+                    const messages = errors.map(err => {
+                        // Check if it's a "Value error" message
+                        if (err.msg && err.msg.includes('Value error,')) {
+                            // Extract just the message after "Value error, "
+                            return err.msg.replace('Value error, ', '');
+                        }
+                        // Otherwise return the message as-is
+                        return err.msg || 'Validation error';
+                    });
+                    
+                    // Join multiple errors with line breaks
+                    errorMsg = messages.join('\n');
+                } else if (typeof errors === 'string') {
+                    errorMsg = errors;
+                } else {
+                    errorMsg = 'Validation error occurred';
+                }
+                
+            } else if (error.response.status === 400) {
+                errorMsg = error.response.data.detail || 'Bad request';
+            } else {
+                errorMsg = `Server error (${error.response.status}): ${error.response.statusText}`;
+            }
+        } else if (error.request) {
+            errorMsg = 'No response from server. Check your connection.';
+        } else {
+            errorMsg = `Network error: ${error.message}`;
+        }
+
+        showFormError(errorMsg);
+    }
+    }
 
         function showFormError(message) {
             const errorContainer = document.getElementById('errorContainer');
@@ -425,71 +592,102 @@
         }
 
         function renderExams(data) {
-            const tbody = document.getElementById('examTableBody');
-            
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#6c757d;">No exams found</td></tr>';
-                return;
-            }
+    const tbody = document.getElementById('examTableBody');
+    
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#6c757d;">No exams found</td></tr>';
+        return;
+    }
 
-            tbody.innerHTML = data.map(exam => `
-                <tr>
-                    <td>${exam.title || 'N/A'}</td>
-                    <td>${exam.exam_code || 'N/A'}</td>
-                    <td>${exam.date || 'N/A'}</td>
-                    <td>${exam.start_time || 'N/A'}</td>
-                    <td>${exam.end_time || 'N/A'}</td>
-                    <td>${exam.duration ? exam.duration + ' min' : 'N/A'}</td>
-                    <td><span class="status-badge status-${exam.status || 'unknown'}">${
-    exam.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Unknown'}</span></td>
-                    <td class="actions">
-                        <a href="/examDetails?id=${exam.id}" class="action-btn view" title="View">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
-                            </svg>
-                        </a>
-                        <button class="action-btn edit" title="Edit" onclick="editExam(${exam.id})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                            </svg>
-                        </button>
-                        <button class="action-btn delete" title="Delete" onclick="deleteExam(${exam.id})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                            </svg>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        }
+    tbody.innerHTML = data.map(exam => `
+        <tr>
+            <td>${exam.title || 'N/A'}</td>
+            <td>${exam.exam_code || 'N/A'}</td>
+            <td>${exam.date || 'N/A'}</td>
+            <td>${exam.start_time || 'N/A'}</td>
+            <td>${exam.end_time || 'N/A'}</td>
+            <td>${exam.duration ? exam.duration + ' min' : 'N/A'}</td>
+            <td><span class="status-badge status-${exam.status || 'unknown'}">${
+                exam.status ? exam.status.charAt(0).toUpperCase() + exam.status.slice(1) : 'Unknown'
+            }</span></td>
+            <td class="actions">
+                <a href="/examDetails?id=${exam.id}" class="action-btn view" title="View">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </a>
+                
+                ${exam.status === 'scheduled' ? `
+                    <!-- Edit button - only for scheduled exams -->
+                    <button class="action-btn edit" title="Edit" onclick="editExam(${exam.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                    </button>
+                ` : `
+                    <!-- Disabled edit button for published/completed exams -->
+                    <button class="action-btn edit" title="Cannot edit ${exam.status} exam" disabled style="opacity:0.3;cursor:not-allowed">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                    </button>
+                `}
+                
+        
+                ${exam.status === 'scheduled' ? `
+                    <!-- Delete button - only for scheduled exams -->
+                    <button class="action-btn delete" title="Delete" onclick="deleteExam(${exam.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                ` : `
+                    <!-- Disabled delete button for published/completed exams -->
+                    <button class="action-btn delete" title="Cannot delete ${exam.status} exam" disabled style="opacity:0.3;cursor:not-allowed">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                `}
+
+                  ${exam.status === 'scheduled' ? `
+                    <button class="action-btn publish" title="Publish" onclick="publishExam(${exam.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                    </button>
+                ` : `
+                    <!-- Disabled publish button -->
+                    <button class="action-btn publish" title="Already ${exam.status}" disabled style="opacity:0.3;cursor:not-allowed">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                    </button>
+                `}
+                
+            </td>
+        </tr>
+    `).join('');
+}
 
         function filterExams() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const status = document.getElementById('statusFilter').value;
-            
-            const filtered = exams.filter(exam => {
-                const matchSearch = (exam.title && exam.title.toLowerCase().includes(search)) || 
-                                   (exam.exam_code && exam.exam_code.toLowerCase().includes(search));
-                const matchStatus = status === 'all' || exam.status === status;
-                return matchSearch && matchStatus;
-            });
-            
+            const filtered = getFilteredExams();
+            sortExamsArray(filtered, currentSort.column, currentSort.direction);
             renderExams(filtered);
+            updateSortIndicators();
         }
 
         function clearFilters() {
             document.getElementById('searchInput').value = '';
             document.getElementById('statusFilter').value = 'all';
             renderExams(exams);
-        }
-
-        function resetForm() {
-            document.getElementById('examForm').reset();
-            document.getElementById('examEditId').value = '';
-            document.getElementById('errorContainer').style.display = 'none';
         }
 
         function openModal() {
@@ -513,6 +711,8 @@
                 return;
             }
 
+            const examCodeInput = document.getElementById('examIdInput');
+            
             document.getElementById('examEditId').value = id;
             document.getElementById('examTitle').value = exam.title || '';
             document.getElementById('examIdInput').value = exam.exam_code || '';
@@ -521,10 +721,80 @@
             document.getElementById('examEndTime').value = exam.end_time || '';
             document.getElementById('courseCode').value = exam.course || '';
 
+            // Make exam code read-only during edit
+            examCodeInput.readOnly = true;
+            examCodeInput.style.backgroundColor = '#f5f5f5';
+            examCodeInput.style.cursor = 'not-allowed';
+
             document.getElementById('examModalTitle').textContent = 'Edit Exam';
             document.getElementById('examSubmitBtn').textContent = 'Save Changes';
             document.getElementById('examModal').classList.add('active');
         }
+
+    // Update the resetForm function to enable exam code field for new exams
+    function resetForm() {
+        document.getElementById('examForm').reset();
+        document.getElementById('examEditId').value = '';
+        document.getElementById('errorContainer').style.display = 'none';
+        
+        // Enable exam code for new exams
+        const examCodeInput = document.getElementById('examIdInput');
+        examCodeInput.readOnly = false;
+        examCodeInput.style.backgroundColor = '';
+        examCodeInput.style.cursor = 'auto';
+    }
+
+    
+    async function checkAndUpdateCompletedExams() {
+    try {
+        const now = new Date();
+        let needsUpdate = false;
+
+        for (const exam of exams) {
+            // Skip if already completed
+            if (exam.status === 'completed') continue;
+
+            // Parse exam date and end time
+            const examDateTime = new Date(`${exam.date}T${exam.end_time}`);
+
+            // If current time is past exam end time, mark as completed
+            if (now > examDateTime && exam.status !== 'completed') {
+                console.log(`Marking exam ${exam.id} as completed`);
+                try {
+                    // ✅ NEW: Use the status-only update endpoint with query parameter
+                    const response = await axios.patch(
+                        `/exams/${exam.id}/status?status=completed`
+                    );
+
+                    // Update local exam object
+                    const idx = exams.findIndex(e => e.id === exam.id);
+                    if (idx > -1) {
+                        exams[idx] = response.data;
+                    }
+                    needsUpdate = true;
+                    
+                    console.log(`✅ Exam ${exam.id} marked as completed successfully`);
+                } catch (error) {
+                    console.error(`❌ Error updating exam ${exam.id} to completed:`, error);
+                    
+                    // Log detailed error info
+                    if (error.response) {
+                        console.error('Error response:', error.response.data);
+                        console.error('Error status:', error.response.status);
+                    }
+                }
+            }
+        }
+
+        // Re-render table if any exams were updated
+        if (needsUpdate) {
+            console.log('✅ Re-rendering exams table after status updates');
+            renderExams(exams);
+        }
+    } catch (error) {
+        console.error('❌ Error checking completed exams:', error);
+    }
+    }
 
         async function deleteExam(id) {
             if (!confirm('Are you sure you want to delete this exam?')) {

@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Submissions - Student Portal</title>
     <link rel="stylesheet" href="../static/style.css">
+    <script src="../static/auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/axios@latest/dist/axios.min.js"></script>
 </head>
 <style>
@@ -130,6 +133,7 @@
     </div>
 
     <script>
+        checkAccess(["student"]);
         // REPLACE THIS WITH ACTUAL USER ID FROM SESSION/AUTH
         const urlParams = new URLSearchParams(window.location.search);
         const CURRENT_USER_ID = parseInt(urlParams.get('userId')) || 1;

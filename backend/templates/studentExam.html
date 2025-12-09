@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Examinations - Student Portal</title>
     <link rel="stylesheet" href="../static/style.css">
+    <script src="../static/auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
 </head>
 <body>
@@ -107,6 +109,7 @@
     </div>
 
     <script>
+        checkAccess(["student"]);
         let examsData = [];
         let allExamsData = [];
         // Get student ID from session, URL parameter, or authentication
