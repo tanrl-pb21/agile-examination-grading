@@ -10,6 +10,7 @@ from src.routers import question
 from src.routers import submission
 from src.routers import grading
 from src.routers import take_exam
+from src.routers import auth
 
 app = FastAPI()
 app.include_router(exams.router)
@@ -18,6 +19,7 @@ app.include_router(question.router)
 app.include_router(submission.router)
 app.include_router(grading.router)
 app.include_router(take_exam.router)
+app.include_router(auth.router)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -31,6 +33,15 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 
 
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.get("/signup", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
 
 # Home page → return HTML instead of JSON
 @app.get("/examManagement", response_class=HTMLResponse)
@@ -53,6 +64,10 @@ def exam_grading(request: Request, submissionId: int, examId: int):  # Changed t
         {"request": request, "submissionId": submissionId, "examId": examId},
     )
 
+
+@app.get("/forgotPassword", response_class=HTMLResponse)
+def student_exam_list(request: Request):
+    return templates.TemplateResponse("forgot_password.html", {"request": request})
 
 # http://127.0.0.1:8000/examGrading?submissionId=4&examId=42
 
@@ -106,3 +121,16 @@ def exam_management(request: Request):
 def exam_management(request: Request):
     return templates.TemplateResponse("courseDetail.html", {"request": request})
 
+#login
+@app.get("/login", response_class=HTMLResponse)
+def exam_management(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+# Reset Password page
+@app.get("/reset-password", response_class=HTMLResponse)
+def reset_password_page(request: Request):
+    return templates.TemplateResponse("reset_password.html", {"request": request})
+
+@app.get("/studentCourse", response_class=HTMLResponse)
+def reset_password_page(request: Request):
+    return templates.TemplateResponse("studentCourse.html", {"request": request})

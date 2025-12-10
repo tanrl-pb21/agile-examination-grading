@@ -152,6 +152,7 @@ class ExamService:
             INNER JOIN "studentCourse" sc ON sc.course_id = e.course
             WHERE 
                 sc.student_id = %s
+                AND e.status = 'published'
                 AND e.date = CURRENT_DATE
                 AND e.start_time <= %s::time
                 AND e.end_time >= %s::time
@@ -213,6 +214,7 @@ class ExamService:
             INNER JOIN "studentCourse" sc ON sc.course_id = e.course
             WHERE 
                 sc.student_id = %s
+                AND e.status = 'published'
                 AND (
                     e.date > %s::date
                     OR (e.date = %s::date AND e.start_time > %s::time)
@@ -435,7 +437,7 @@ class ExamService:
         status="scheduled",
     ):
         """Update an existing exam with full validation"""
-        print(f"🔍 update_exam called: id={exam_id}, {title}")
+        print(f"🔍 update_exam called: id={exam_id}, {title}, status={status}")
 
         if not exam_id:
             raise ValueError("Exam ID is required")
@@ -453,8 +455,8 @@ class ExamService:
         if not date:
             raise ValueError("Date is required")
 
-        if status not in ["scheduled", "completed", "cancelled"]:
-            raise ValueError("Status must be one of: scheduled, completed, cancelled")
+        if status not in ["scheduled", "published", "completed", "cancelled"]:
+            raise ValueError("Status must be one of: scheduled, published, completed, cancelled")
 
         # Check exam code uniqueness (excluding current exam)
         if self.exam_code_exists(exam_code, exclude_exam_id=exam_id):
@@ -466,21 +468,25 @@ class ExamService:
         else:
             date_obj = date
 
-        # Validate date
-        validate_date_obj(date_obj)
+        # Only validate date is in future for scheduled/published exams
+        # Allow past dates for completed/cancelled exams
+        if status in ["scheduled", "published"]:
+            validate_date_obj(date_obj)
 
         # Calculate duration
         duration = calculate_duration(start_time, end_time)
 
-        # Check for exam conflicts (with timeout protection)
-        try:
-            self.check_exam_conflicts(
-                course, date_obj, start_time, end_time, exclude_exam_id=exam_id
-            )
-        except ValueError:
-            raise  # Re-raise validation errors
-        except Exception as e:
-            print(f"WARNING: Conflict check failed but proceeding: {e}")
+        # Only check for exam conflicts for scheduled/published exams
+        # Skip conflict check for completed/cancelled exams
+        if status in ["scheduled", "published"]:
+            try:
+                self.check_exam_conflicts(
+                    course, date_obj, start_time, end_time, exclude_exam_id=exam_id
+                )
+            except ValueError:
+                raise  # Re-raise validation errors
+            except Exception as e:
+                print(f"WARNING: Conflict check failed but proceeding: {e}")
 
         sql = """
             UPDATE exams
@@ -510,8 +516,9 @@ class ExamService:
         if not row:
             raise ValueError(f"Exam with id {exam_id} not found")
 
-        print(f"✅ Exam {exam_id} updated")
+        print(f"✅ Exam {exam_id} updated to status: {status}")
         return row
+
 
     def get_exam(self, exam_id: int):
         """Get a single exam by ID"""
@@ -604,6 +611,7 @@ class ExamService:
             INNER JOIN "studentCourse" sc ON e.course = sc.course_id
             INNER JOIN course c ON e.course = c.id
             WHERE sc.student_id = %s
+            AND e.status = 'published'
             ORDER BY e.date DESC, e.start_time DESC
             LIMIT 1000;
         """
@@ -721,6 +729,7 @@ class ExamService:
             INNER JOIN course c ON e.course = c.id
             WHERE 
                 sc.student_id = %s
+                AND e.status = 'published'
                 AND LOWER(c.course_name) LIKE LOWER(%s)
             ORDER BY e.date DESC, e.start_time DESC
             LIMIT 100;
@@ -852,3 +861,190 @@ class ExamService:
             import traceback
             traceback.print_exc()
             return []
+        
+    def can_publish_exam(self, exam_id: int) -> dict:
+        """
+        Check if exam can be published.
+        Returns: {
+            "can_publish": bool,
+            "message": str,
+            "question_count": int
+        }
+        
+        Rules:
+        1. Exam date/start time must not be in the past
+        2. Exam must have at least 1 question
+        """
+        from datetime import datetime
+        
+        try:
+            # Get exam details
+            sql_exam = """
+                SELECT id, date, start_time, status 
+                FROM exams 
+                WHERE id = %s;
+            """
+            
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(sql_exam, (exam_id,))
+                    exam = cur.fetchone()
+            
+            if not exam:
+                return {
+                    "can_publish": False,
+                    "message": "Exam not found",
+                    "question_count": 0
+                }
+            
+            print(f"DEBUG: Exam found - date: {exam['date']}, start_time: {exam['start_time']}, type: {type(exam['start_time'])}")
+            
+            # Check if exam date/time is in the past
+            try:
+                # Handle both string and time object formats
+                date_str = str(exam['date'])
+                
+                # Convert start_time to string if it's a time object
+                if isinstance(exam['start_time'], str):
+                    start_time_str = exam['start_time']
+                else:
+                    # It's a time object, convert to HH:MM format
+                    start_time_str = exam['start_time'].strftime("%H:%M")
+                
+                print(f"DEBUG: Date string: {date_str}, Start time string: {start_time_str}")
+                
+                exam_datetime = datetime.strptime(f"{date_str} {start_time_str}", "%Y-%m-%d %H:%M")
+                now = datetime.now()
+                print(f"DEBUG: Exam datetime: {exam_datetime}, Now: {now}")
+                
+                if exam_datetime < now:
+                    return {
+                        "can_publish": False,
+                        "message": "Cannot publish exam: Exam date and start time have already passed",
+                        "question_count": 0
+                    }
+            except Exception as e:
+                print(f"ERROR parsing datetime: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                return {
+                    "can_publish": False,
+                    "message": f"Error validating exam time: {str(e)}",
+                    "question_count": 0
+                }
+            
+            # Count questions from 'question' table
+            sql_questions = """
+                SELECT COUNT(*) as question_count 
+                FROM question 
+                WHERE exam_id = %s;
+            """
+            
+            try:
+                with get_conn() as conn:
+                    with conn.cursor(row_factory=dict_row) as cur:
+                        cur.execute(sql_questions, (exam_id,))
+                        result = cur.fetchone()
+                        question_count = result['question_count'] if result else 0
+                
+                print(f"DEBUG: Question count for exam {exam_id}: {question_count}")
+            except Exception as e:
+                print(f"ERROR counting questions: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                return {
+                    "can_publish": False,
+                    "message": f"Error checking questions: {str(e)}",
+                    "question_count": 0
+                }
+            
+            if question_count == 0:
+                return {
+                    "can_publish": False,
+                    "message": "Cannot publish exam: Exam must have at least 1 question",
+                    "question_count": 0
+                }
+            
+            return {
+                "can_publish": True,
+                "message": "Exam can be published",
+                "question_count": question_count
+            }
+            
+        except Exception as e:
+            print(f"ERROR in can_publish_exam: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "can_publish": False,
+                "message": f"Server error: {str(e)}",
+                "question_count": 0
+            }
+                
+    def publish_exam(self, exam_id: int) -> dict:
+        """
+        Publish an exam (change status from 'scheduled' to 'published').
+        Validates before publishing.
+        """
+        # First validate if can publish
+        validation = self.can_publish_exam(exam_id)
+        
+        if not validation["can_publish"]:
+            raise ValueError(validation["message"])
+        
+        # Update status to published
+        sql = """
+            UPDATE exams
+            SET status = 'published'
+            WHERE id = %s
+            RETURNING id, title, exam_code, course, date, start_time, end_time, duration, status;
+        """
+        
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (exam_id,))
+                exam = cur.fetchone()
+        
+        if not exam:
+            raise ValueError(f"Exam with id {exam_id} not found")
+        
+        print(f"✅ Exam {exam_id} published successfully")
+        return exam
+    
+    
+    def update_exam_status(self, exam_id: int, status: str):
+        """
+        Update only the exam status - no validation on dates/times.
+        Used for auto-updating exams to 'completed' status.
+        """
+        if not exam_id or exam_id <= 0:
+            raise ValueError("Exam ID must be a positive integer")
+        
+        valid_statuses = ["scheduled", "published", "completed", "cancelled"]
+        if status not in valid_statuses:
+            raise ValueError(f"Status must be one of: {', '.join(valid_statuses)}")
+        
+        sql = """
+            UPDATE exams
+            SET status = %s
+            WHERE id = %s
+            RETURNING id, title, exam_code, course, date, start_time, end_time, duration, status;
+        """
+        
+        try:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(sql, (status, exam_id))
+                    row = cur.fetchone()
+            
+            if not row:
+                raise ValueError(f"Exam with id {exam_id} not found")
+            
+            print(f"✅ Exam {exam_id} status updated to: {status}")
+            return row
+            
+        except Exception as e:
+            print(f"ERROR in update_exam_status: {str(e)}")
+            raise
+                
+            

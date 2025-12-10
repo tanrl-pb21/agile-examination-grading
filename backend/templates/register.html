@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Exam Management System</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #4a6cf7 0%, #3a5ce5 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .signup-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-width: 1000px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .signup-left {
+            background: linear-gradient(135deg, #4a6cf7 0%, #3a5ce5 100%);
+            padding: 60px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .signup-left::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 15s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .signup-left-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+
+        .signup-logo {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .signup-logo svg {
+            width: 60px;
+            height: 60px;
+            stroke: white;
+        }
+
+        .signup-left h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .signup-left p {
+            font-size: 16px;
+            opacity: 0.95;
+            line-height: 1.6;
+            max-width: 300px;
+        }
+
+        .signup-right {
+            padding: 60px 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .signup-header {
+            margin-bottom: 30px;
+        }
+
+        .signup-header h2 {
+            font-size: 28px;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .signup-header p {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .role-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .role-tab {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+
+        .role-tab:hover {
+            border-color: #4a6cf7;
+            color: #4a6cf7;
+        }
+
+        .role-tab.active {
+            background: linear-gradient(135deg, #4a6cf7 0%, #3a5ce5 100%);
+            color: white;
+            border-color: #4a6cf7;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #1a1a2e;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            stroke: #9e9e9e;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 14px 15px 14px 45px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4a6cf7;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.1);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: #9e9e9e;
+            transition: color 0.3s ease;
+        }
+
+        .password-toggle:hover {
+            color: #4a6cf7;
+        }
+
+        .password-toggle svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+        }
+
+        .password-requirements {
+            background: #f0f4ff;
+            border-left: 4px solid #4a6cf7;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #495057;
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .requirement:last-child {
+            margin-bottom: 0;
+        }
+
+        .requirement-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            background: #d1d5db;
+            color: white;
+        }
+
+        .requirement-icon.complete {
+            background: #22c55e;
+        }
+
+        .student-id-error {
+            color: #991b1b;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .student-id-error.show {
+            display: block;
+        }
+
+        .signup-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #4a6cf7 0%, #3a5ce5 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(74, 108, 247, 0.4);
+            margin-top: 20px;
+        }
+
+        .signup-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 108, 247, 0.5);
+        }
+
+        .signup-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            animation: shake 0.3s ease;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .success-message {
+            background: #dcfce7;
+            border: 1px solid #86efac;
+            color: #166534;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .login-link a {
+            color: #4a6cf7;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .login-link a:hover {
+            color: #a855f7;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .signup-container {
+                grid-template-columns: 1fr;
+            }
+
+            .signup-left {
+                padding: 40px 30px;
+            }
+
+            .signup-right {
+                padding: 40px 30px;
+            }
+
+            .signup-left h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <!-- Left Side - Branding -->
+        <div class="signup-left">
+            <div class="signup-left-content">
+                <div class="signup-logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <h1>Exam Management System</h1>
+                <p>Join our platform to manage exams efficiently and effectively</p>
+            </div>
+        </div>
+
+        <!-- Right Side - Signup Form -->
+        <div class="signup-right">
+            <div class="signup-header">
+                <h2>Create Account</h2>
+                <p>Sign up to get started</p>
+            </div>
+
+            <!-- Role Selection Tabs -->
+            <div class="role-tabs">
+                <button class="role-tab active" data-role="student">
+                     Student
+                </button>
+                <button class="role-tab" data-role="teacher">
+                     Instructor
+                </button>
+            </div>
+
+            <!-- Error Message -->
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+
+            <!-- Student Form -->
+            <form id="studentForm" class="signup-form" onsubmit="handleSignup(event, 'student')">
+                <div class="form-group">
+                    <label for="studentEmail">Email Address</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        <input 
+                            type="email" 
+                            id="studentEmail" 
+                            name="email" 
+                            placeholder="you@example.com" 
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentId">Student ID (Format: 12ABC34567)</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <input 
+                            type="text" 
+                            id="studentId" 
+                            name="student_id" 
+                            placeholder="e.g. 12ABC34567" 
+                            maxlength="10"
+                            required
+                            oninput="validateStudentId()"
+                        >
+                    </div>
+                    <div class="student-id-error" id="studentIdError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentPassword">Password</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <input 
+                            type="password" 
+                            id="studentPassword" 
+                            name="password" 
+                            placeholder="Create a strong password" 
+                            required
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePassword('studentPassword')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentConfirmPassword">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <input 
+                            type="password" 
+                            id="studentConfirmPassword" 
+                            name="confirm_password" 
+                            placeholder="Confirm your password" 
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="password-requirements" id="studentRequirements">
+                    <div class="requirement">
+                        <span class="requirement-icon">✓</span>
+                        <span>At least 8 characters</span>
+                    </div>
+                    <div class="requirement">
+                        <span class="requirement-icon">✓</span>
+                        <span>One uppercase letter</span>
+                    </div>
+                    <div class="requirement">
+                        <span class="requirement-icon">✓</span>
+                        <span>One lowercase letter</span>
+                    </div>
+                    <div class="requirement">
+                        <span class="requirement-icon">✓</span>
+                        <span>One number</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="signup-btn" id="studentSignupBtn">
+                    Create Account
+                </button>
+            </form>
+
+            <!-- Instructor Form -->
+            <form id="teacherForm" class="signup-form hidden" onsubmit="handleSignup(event, 'teacher')">
+                <div class="form-group">
+                    <label for="teacherEmail">Email Address</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        <input 
+                            type="email" 
+                            id="teacherEmail" 
+                            name="email" 
+                            placeholder="you@example.com" 
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="teacherPassword">Password</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <input 
+                            type="password" 
+                            id="teacherPassword" 
+                            name="password" 
+                            placeholder="Create a strong password" 
+                            required
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePassword('teacherPassword')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="teacherConfirmPassword">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <input 
+                            type="password" 
+                            id="teacherConfirmPassword" 
+                            name="confirm_password" 
+                            placeholder="Confirm your password" 
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="password-requirements" id="teacherRequirements">
+                    <div class="requirement">
+                        <span class="requirement-icon">✓</span>
+                        <span>At least 8 characters</span>
+                    </div>
+                    <div class="requirement">
+                        <span class="requirement-icon">✓</span>
+                        <span>One uppercase letter</span>
+                    </div>
+                    <div class="requirement">
+                        <span class="requirement-icon">✓</span>
+                        <span>One lowercase letter</span>
+                    </div>
+                    <div class="requirement">
+                        <span class="requirement-icon">✓</span>
+                        <span>One number</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="signup-btn" id="teacherSignupBtn">
+                    Create Account
+                </button>
+            </form>
+
+            <div class="login-link">
+                Already have an account? <a href="/">Sign in here</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Role tab switching
+        document.querySelectorAll('.role-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const role = tab.dataset.role;
+                
+                // Update active tab
+                document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Switch forms
+                document.querySelectorAll('.signup-form').forEach(form => form.classList.add('hidden'));
+                if (role === 'student') {
+                    document.getElementById('studentForm').classList.remove('hidden');
+                } else {
+                    document.getElementById('teacherForm').classList.remove('hidden');
+                }
+                
+                // Clear previous messages
+                hideError();
+                hideSuccess();
+            });
+        });
+
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+            } else {
+                input.type = 'password';
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('show');
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+        }
+
+        function hideSuccess() {
+            document.getElementById('successMessage').classList.remove('show');
+        }
+
+        // Student ID validation
+        function validateStudentId() {
+            const studentId = document.getElementById('studentId').value.trim().toUpperCase();
+            const errorDiv = document.getElementById('studentIdError');
+            
+            // Pattern: 2 digits + 3 letters + 5 digits (e.g., 12ABC34567)
+            const pattern = /^[0-9]{2}[A-Z]{3}[0-9]{5}$/;
+            
+            if (studentId.length === 0) {
+                errorDiv.classList.remove('show');
+                return;
+            }
+            
+            if (!pattern.test(studentId)) {
+                errorDiv.textContent = '❌ Format must be: 2 digits + 3 letters + 5 digits (e.g., 12ABC34567)';
+                errorDiv.classList.add('show');
+            } else {
+                errorDiv.classList.remove('show');
+            }
+        }
+
+        // Password validation function
+        function validatePassword(password) {
+            return {
+                minLength: password.length >= 8,
+                hasUpper: /[A-Z]/.test(password),
+                hasLower: /[a-z]/.test(password),
+                hasNumber: /[0-9]/.test(password)
+            };
+        }
+
+        // Update password requirements display
+        function updatePasswordRequirements(passwordInputId, requirementsContainerId) {
+            const passwordInput = document.getElementById(passwordInputId);
+            const validation = validatePassword(passwordInput.value);
+            
+            const requirements = document.querySelectorAll(`#${requirementsContainerId} .requirement`);
+            const icons = document.querySelectorAll(`#${requirementsContainerId} .requirement-icon`);
+            
+            icons[0].classList.toggle('complete', validation.minLength);
+            icons[1].classList.toggle('complete', validation.hasUpper);
+            icons[2].classList.toggle('complete', validation.hasLower);
+            icons[3].classList.toggle('complete', validation.hasNumber);
+        }
+
+        // Add event listeners for real-time validation
+        document.addEventListener('DOMContentLoaded', () => {
+            const studentPassword = document.getElementById('studentPassword');
+            const teacherPassword = document.getElementById('teacherPassword');
+            
+            if (studentPassword) {
+                studentPassword.addEventListener('input', () => {
+                    updatePasswordRequirements('studentPassword', 'studentRequirements');
+                });
+            }
+            
+            if (teacherPassword) {
+                teacherPassword.addEventListener('input', () => {
+                    updatePasswordRequirements('teacherPassword', 'teacherRequirements');
+                });
+            }
+        });
+
+        async function handleSignup(event, role) {
+            event.preventDefault();
+            hideError();
+            hideSuccess();
+
+            let email, password, confirmPassword, studentId;
+
+            if (role === 'student') {
+                email = document.getElementById('studentEmail').value;
+                password = document.getElementById('studentPassword').value;
+                confirmPassword = document.getElementById('studentConfirmPassword').value;
+                studentId = document.getElementById('studentId').value.trim().toUpperCase();
+            } else {
+                email = document.getElementById('teacherEmail').value;
+                password = document.getElementById('teacherPassword').value;
+                confirmPassword = document.getElementById('teacherConfirmPassword').value;
+            }
+
+            // Validation
+            if (!email || !password || !confirmPassword) {
+                showError('Please fill in all required fields');
+                return;
+            }
+
+            if (role === 'student' && !studentId) {
+                showError('Student ID is required');
+                return;
+            }
+
+            // Validate student ID format
+            if (role === 'student') {
+                const pattern = /^[0-9]{2}[A-Z]{3}[0-9]{5}$/;
+                if (!pattern.test(studentId)) {
+                    showError('Student ID format must be: 2 digits + 3 letters + 5 digits (e.g., 12ABC34567)');
+                    return;
+                }
+            }
+
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+
+            const btnId = role === 'student' ? 'studentSignupBtn' : 'teacherSignupBtn';
+            const btn = document.getElementById(btnId);
+            btn.disabled = true;
+            btn.textContent = 'Creating account...';
+
+            try {
+                const payload = {
+                    email: email,
+                    password: password,
+                    confirm_password: confirmPassword,
+                    role: role === 'student' ? 'student' : 'teacher'
+                };
+
+                if (role === 'student') {
+                    payload.student_id = studentId;
+                }
+
+                const response = await axios.post('/auth/register', payload);
+
+                showSuccess('Account created successfully! Redirecting to login...');
+                
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+
+            } catch (error) {
+                console.error('Signup error:', error);
+                btn.disabled = false;
+                btn.textContent = 'Create Account';
+
+                if (error.response) {
+                    showError(error.response.data.detail || 'Signup failed. Please try again.');
+                } else {
+                    showError('Connection error. Please check your internet and try again.');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
