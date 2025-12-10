@@ -84,7 +84,8 @@ def get_course_detail(course_id: int):
 def create_course(course: CourseCreate):
     """Create a new course"""
     try:
-        new_course = service.create_course(course.dict())
+        # FIX for Pydantic v2
+        new_course = service.create_course(course.model_dump())
         return {"message": "Course created successfully", "course": new_course}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -96,7 +97,11 @@ def create_course(course: CourseCreate):
 def update_course(course_id: int, course: CourseUpdate):
     """Update an existing course"""
     try:
-        updated_course = service.update_course(course_id, course.dict(exclude_unset=True))
+        # FIX for Pydantic v2
+        updated_course = service.update_course(
+            course_id,
+            course.model_dump(exclude_unset=True)
+        )
         if not updated_course:
             raise HTTPException(status_code=404, detail="Course not found")
         return {"message": "Course updated successfully", "course": updated_course}
@@ -106,7 +111,6 @@ def update_course(course_id: int, course: CourseUpdate):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.patch("/{course_id}/status")
 def update_course_status(course_id: int, status_update: CourseStatusUpdate):
