@@ -22,13 +22,6 @@
             margin-left: 260px; /* SAME width as sidebar */
             padding: 20px;
         }
-
-        .exam-cards-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
     </style>
 
 </head>
@@ -268,10 +261,7 @@
             const container = document.getElementById('examCardsContainer');
             
             if (examsData.length === 0) {
-                container.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #666;">
-                        No exams available for your enrolled courses.
-                    </div>`;
+                container.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">No exams available for your enrolled courses.</p>';
                 return;
             }
 
