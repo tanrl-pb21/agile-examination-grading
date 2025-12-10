@@ -65,6 +65,13 @@
     </div>
 
     <script>
+        function getUserId() {
+        const userInfo = JSON.parse(localStorage.getItem("user_info"));
+        return userInfo?.id || null; 
+        }
+
+
+
         checkAccess(["student"]);
         // ===========================
         // GLOBAL STATE
@@ -72,7 +79,7 @@
         let examQuestionsData = [];
         let selectedAnswers = {};
         let currentExamCode = null;
-        let currentUserId = 1; // TODO: Get from session/auth system
+        let currentUserId =  getUserId(); // TODO: Get from session/auth system
         let timerInterval = null;
         let examHasEnded = false; // Track if exam time is up
         let isSubmitting = false; // Prevent duplicate submissions
