@@ -137,7 +137,6 @@
         updateSidebarUserInfo();
     });
 
-
         let examsData = [];
         let allExamsData = [];
         // Get student ID from session, URL parameter, or authentication
@@ -151,7 +150,8 @@
             if (id) return id;
             
             // Option 2: Get from session storage
-            const sessionId = sessionStorage.getItem('student_id');
+            const userInfo = JSON.parse(localStorage.getItem("user_info"));
+            const sessionId = userInfo.id;
             if (sessionId) return sessionId;
             
             // Option 3: Get from a global variable set by your auth system
@@ -261,7 +261,11 @@
             const container = document.getElementById('examCardsContainer');
             
             if (examsData.length === 0) {
-                container.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">No exams available for your enrolled courses.</p>';
+               container.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #666;">
+                    No exams available for your enrolled courses.
+                </div>`;
+
                 return;
             }
 
