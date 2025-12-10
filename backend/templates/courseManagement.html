@@ -129,23 +129,9 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Student Limit</label>
-                        <input type="number" id="studentLimit" placeholder="Enter maximum number of students" min="1" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Assign Instructors</label>
-                        <select id="courseInstructors" multiple style="height: 120px;">
-                            <option value="">Loading instructors...</option>
-                        </select>
-                        <small style="color: #666; font-size: 0.85rem;">Hold Ctrl (Cmd on Mac) to select multiple instructors</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select id="courseStatus" required>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
+                        <label>Assign Instructor</label>
+                        <select id="courseInstructor" required>
+                            <option value="">Select an instructor</option>
                         </select>
                     </div>
                     
@@ -184,13 +170,14 @@
 
         // Update instructor select options
         function updateInstructorSelect() {
-            const select = document.getElementById('courseInstructors');
+            const select = document.getElementById('courseInstructor');
             if (allInstructors.length === 0) {
                 select.innerHTML = '<option value="">No instructors available</option>';
             } else {
-                select.innerHTML = allInstructors.map(instructor => 
-                    `<option value="${instructor.id}">${instructor.user_email}</option>`
-                ).join('');
+                select.innerHTML = '<option value="">Select an instructor</option>' + 
+                    allInstructors.map(instructor => 
+                        `<option value="${instructor.id}">${instructor.user_email}</option>`
+                    ).join('');
             }
         }
 
@@ -294,10 +281,7 @@
             document.getElementById('modalError').innerHTML = '';
             
             // Clear instructor selection
-            const instructorSelect = document.getElementById('courseInstructors');
-            for (let option of instructorSelect.options) {
-                option.selected = false;
-            }
+            document.getElementById('courseInstructor').value = '';
             
             document.getElementById('modalOverlay').classList.add('show');
         }
@@ -313,30 +297,24 @@
         async function saveCourse() {
             const name = document.getElementById('courseName').value.trim();
             const code = document.getElementById('courseCode').value.trim();
-            const status = document.getElementById('courseStatus').value;
             const description = document.getElementById('courseDescription').value.trim();
-            const studentLimit = document.getElementById('studentLimit').value;
-            
-            // Get selected instructors
-            const instructorSelect = document.getElementById('courseInstructors');
-            const selectedInstructors = Array.from(instructorSelect.selectedOptions).map(opt => parseInt(opt.value));
+            const instructorId = document.getElementById('courseInstructor').value;
 
-            if (!name || !code || !studentLimit) {
+            if (!name || !code) {
                 showModalError('Please fill in all required fields');
                 return;
             }
 
-            if (studentLimit < 1) {
-                showModalError('Student limit must be at least 1');
+            if (!instructorId) {
+                showModalError('Please select an instructor');
                 return;
             }
 
             const courseData = {
                 course_name: name,
                 course_code: code,
-                status: status,
-                description: description || null,
-                student_limit: parseInt(studentLimit)
+                status: 'inactive',  // Always set to inactive initially
+                description: description || null
             };
 
             try {
@@ -374,8 +352,8 @@
                     throw new Error(error.detail || 'Failed to save course');
                 }
 
-                // Assign instructors if any selected
-                if (selectedInstructors.length > 0 && newCourseId) {
+                // Handle instructor assignment
+                if (newCourseId && instructorId) {
                     // Get current instructors for the course
                     let currentInstructors = [];
                     if (editingId) {
@@ -385,31 +363,24 @@
                         }
                     }
 
-                    // Remove instructors that are not in the new selection
+                    // Remove all current instructors
                     for (const instructor of currentInstructors) {
-                        if (!selectedInstructors.includes(instructor.id)) {
-                            await fetch(`${API_BASE_URL}/${newCourseId}/instructors/${instructor.id}`, {
-                                method: 'DELETE'
-                            });
-                        }
+                        await fetch(`${API_BASE_URL}/${newCourseId}/instructors/${instructor.id}`, {
+                            method: 'DELETE'
+                        });
                     }
 
-                    // Add new instructors
-                    const currentInstructorIds = currentInstructors.map(i => i.id);
-                    for (const instructorId of selectedInstructors) {
-                        if (!currentInstructorIds.includes(instructorId)) {
-                            try {
-                                await fetch(`${API_BASE_URL}/${newCourseId}/instructors`, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({ instructor_id: instructorId })
-                                });
-                            } catch (error) {
-                                console.error('Error assigning instructor:', error);
-                            }
-                        }
+                    // Assign the new instructor
+                    try {
+                        await fetch(`${API_BASE_URL}/${newCourseId}/instructors`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ instructor_id: parseInt(instructorId) })
+                        });
+                    } catch (error) {
+                        console.error('Error assigning instructor:', error);
                     }
                 }
 
@@ -436,29 +407,19 @@
                 document.getElementById('modalTitle').textContent = 'Edit Course';
                 document.getElementById('courseName').value = course.course_name;
                 document.getElementById('courseCode').value = course.course_code;
-                document.getElementById('courseStatus').value = course.status || 'active';
                 document.getElementById('courseDescription').value = course.description || '';
-                document.getElementById('studentLimit').value = course.student_limit || '';
                 
-                // Get current instructors and select them
+                // Get current instructor and select them
                 const instructorsResponse = await fetch(`${API_BASE_URL}/${id}/instructors`);
                 if (instructorsResponse.ok) {
                     const currentInstructors = await instructorsResponse.json();
-                    const instructorSelect = document.getElementById('courseInstructors');
+                    const instructorSelect = document.getElementById('courseInstructor');
                     
-                    // Clear all selections first
-                    for (let option of instructorSelect.options) {
-                        option.selected = false;
+                    if (currentInstructors.length > 0) {
+                        instructorSelect.value = currentInstructors[0].id;
+                    } else {
+                        instructorSelect.value = '';
                     }
-                    
-                    // Select current instructors
-                    currentInstructors.forEach(instructor => {
-                        for (let option of instructorSelect.options) {
-                            if (parseInt(option.value) === instructor.id) {
-                                option.selected = true;
-                            }
-                        }
-                    });
                 }
                 
                 document.querySelector('.btn-primary').textContent = 'Update Course';
