@@ -160,9 +160,13 @@
         updateSidebarUserInfo();
     });
 
-        // REPLACE THIS WITH ACTUAL USER ID FROM SESSION/AUTH
+        function getUserId() {
+        const userInfo = JSON.parse(localStorage.getItem("user_info"));
+        return userInfo?.id || null; 
+        }
+    
         const urlParams = new URLSearchParams(window.location.search);
-        const CURRENT_USER_ID = parseInt(urlParams.get('userId')) || 1;
+        const CURRENT_USER_ID = getUserId();
 
         let submissionsData = [];
 
