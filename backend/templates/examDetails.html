@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exam Management - Exam Detail</title>
     <link rel="stylesheet" href="../static/style.css">
+    <script src="../static/auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios@latest/dist/axios.min.js"></script>
     <style>
         .btn-add-option {
@@ -392,6 +394,10 @@
 
 
     <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            checkAccess(["teacher"]);
+            updateSidebarUserInfo();
+        });
         const urlParams = new URLSearchParams(window.location.search);
         const examId = urlParams.get('id');
        

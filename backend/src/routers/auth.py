@@ -2,11 +2,13 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 from datetime import datetime, timedelta
 from src.services.auth_service import AuthService
+from src.services.email_service import EmailService
 import os
 import jwt
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
-service = AuthService()
+auth_service = AuthService()
+email_service = EmailService()
 
 # JWT Configuration
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this-in-production")
@@ -130,7 +132,7 @@ def login(request: LoginRequest):
         print(f"🔍 POST /auth/login - Email: {request.email}")
         
         # Authenticate user
-        user = service.login(request.email, request.password)
+        user = auth_service.login(request.email, request.password)
         
         # Generate JWT token
         token = generate_jwt_token(user["id"], user["email"], user["role"])
@@ -172,12 +174,20 @@ def register(request: RegisterRequest):
             raise ValueError("Passwords do not match")
         
         # Register user
-        user = service.register(
+        user = auth_service.register(
             email=request.email,
             password=request.password,
             role=request.role,
             student_id=request.student_id
         )
+        
+        # Send welcome email (optional - don't fail registration if email fails)
+        try:
+            email_service.send_welcome_email(request.email)
+            print(f"📧 Welcome email sent to: {request.email}")
+        except Exception as e:
+            print(f"⚠️ Failed to send welcome email: {str(e)}")
+            # Don't fail the registration if email fails
         
         print(f"✅ Registration successful for user: {request.email}")
         
@@ -208,15 +218,33 @@ def forgot_password(request: ForgotPasswordRequest):
     try:
         print(f"🔍 POST /auth/forgot-password - Email: {request.email}")
         
-        result = service.request_password_reset(request.email)
+        # Request password reset (generates token)
+        result = auth_service.request_password_reset(request.email)
+        
+        # Send email if reset token was generated
+        if "reset_token" in result:
+            try:
+                email_sent = email_service.send_password_reset_email(
+                    to_email=request.email,
+                    reset_token=result["reset_token"]
+                )
+                
+                if email_sent:
+                    print(f"📧 Password reset email sent to: {request.email}")
+                else:
+                    print(f"⚠️ Failed to send password reset email to: {request.email}")
+                    
+            except Exception as e:
+                print(f"❌ Error sending password reset email: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                # Don't reveal email sending failure to user for security
         
         print(f"✅ Password reset requested for: {request.email}")
         
-        # In production, send reset_token via email
-        # For now, return it in API response (only for development/testing)
+        # Always return the same message for security
         return {
             "message": result["message"],
-            "reset_token": result.get("reset_token"),  # Remove in production!
             "redirect_url": "/login"
         }
         
@@ -224,7 +252,11 @@ def forgot_password(request: ForgotPasswordRequest):
         print(f"❌ ERROR in forgot_password: {str(e)}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Password reset request failed.")
+        # Always return same message even on error (for security)
+        return {
+            "message": "If an account exists with this email, a password reset link will be sent",
+            "redirect_url": "/login"
+        }
 
 
 @router.post("/reset-password")
@@ -241,7 +273,7 @@ def reset_password(request: ResetPasswordRequest):
             raise ValueError("New passwords do not match")
         
         # Reset password
-        user = service.reset_password(request.reset_token, request.new_password)
+        user = auth_service.reset_password(request.reset_token, request.new_password)
         
         print(f"✅ Password reset successful for: {user['email']}")
         
@@ -263,6 +295,73 @@ def reset_password(request: ResetPasswordRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Password reset failed. Please try again.")
+
+
+@router.get("/verify-reset-token/{token}")
+def verify_reset_token(token: str):
+    """
+    Verify if a reset token is valid and not expired.
+    Used by frontend to check token before showing reset form.
+    """
+    try:
+        print(f"🔍 GET /auth/verify-reset-token")
+        
+        if not token or len(token.strip()) == 0:
+            return {
+                "valid": False,
+                "message": "Reset token is required"
+            }
+        
+        # Import timezone at the top if not already imported
+        import hashlib
+        from datetime import datetime, timezone  # ← Add timezone here
+        from src.db import get_conn
+        from psycopg.rows import dict_row
+        
+        reset_token_hash = hashlib.sha256(token.encode()).hexdigest()
+        
+        sql = """
+            SELECT id, user_email, password_reset_expires
+            FROM "user"
+            WHERE password_reset_token = %s
+            LIMIT 1;
+        """
+        
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (reset_token_hash,))
+                user = cur.fetchone()
+        
+        if not user:
+            print(f"❌ Token not found")
+            return {
+                "valid": False,
+                "message": "Invalid reset token"
+            }
+        
+        # ✅ Fix: Use timezone-aware datetime
+        if user["password_reset_expires"] < datetime.now(timezone.utc):
+            print(f"❌ Token expired for user: {user['user_email']}")
+            return {
+                "valid": False,
+                "message": "Reset token has expired. Please request a new password reset."
+            }
+        
+        print(f"✅ Token valid for user: {user['user_email']}")
+        
+        return {
+            "valid": True,
+            "message": "Token is valid"
+        }
+        
+    except Exception as e:
+        print(f"❌ ERROR in verify_reset_token: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "valid": False,
+            "message": "Error verifying reset token"
+        }
 
 
 @router.post("/verify-token")
@@ -327,7 +426,7 @@ def get_user(user_id: int):
     try:
         print(f"🔍 GET /auth/user/{user_id}")
         
-        user = service.get_user_by_id(user_id)
+        user = auth_service.get_user_by_id(user_id)
         
         return user
         
