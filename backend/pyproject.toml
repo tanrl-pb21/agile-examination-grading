@@ -8,7 +8,7 @@ dependencies = [
     "uvicorn",
     "psycopg[binary]",
     "python-dotenv",
-    "pyjwt"
+    "PyJWT"
 ]
 
 [project.optional-dependencies]
@@ -57,7 +57,7 @@ indent-style = "space"
 line-ending = "auto"
 
 [tool.ruff.isort]
-known-third-party = ["fastapi", "psycopg"]
+known-third-party = ["fastapi", "psycopg","jwt"]
 
 
 # -------------------------------------------------------
