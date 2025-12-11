@@ -1,6 +1,6 @@
 from src.db import get_conn
 from psycopg.rows import dict_row
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 import hashlib
 import secrets
@@ -303,7 +303,7 @@ class AuthService:
             reset_token_hash = hashlib.sha256(reset_token.encode()).hexdigest()
             
             # Token expires in 24 hours
-            expires_at = datetime.utcnow() + timedelta(hours=24)
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
             
             # Store reset token in database
             sql = """

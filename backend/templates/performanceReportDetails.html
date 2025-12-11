@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Performance Report</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@latest/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            color: #475569;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 24px;
+            text-decoration: none;
+        }
+
+        .back-button:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .back-button svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .report-header {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .report-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0 0 8px 0;
+        }
+
+        .report-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .report-header-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-box {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .stat-box-label {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .stat-box-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .stat-box-value.blue { color: #3b82f6; }
+        .stat-box-value.green { color: #10b981; }
+        .stat-box-value.orange { color: #f59e0b; }
+        .stat-box-value.red { color: #ef4444; }
+        .stat-box-value.purple { color: #8b5cf6; }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 24px;
+        }
+
+        .chart-header {
+            margin-bottom: 24px;
+        }
+
+        .chart-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0 0 4px 0;
+        }
+
+        .chart-header p {
+            font-size: 14px;
+            color: #64748b;
+            margin: 0;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            z-index: 10;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .students-table {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .students-table h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0 0 20px 0;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 12px;
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        tbody td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 14px;
+            color: #1e293b;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .grade-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .grade-badge.A-plus { background: #d1fae5; color: #065f46; }
+        .grade-badge.A { background: #d1fae5; color: #065f46; }
+        .grade-badge.A-minus { background: #d1fae5; color: #065f46; }
+        .grade-badge.B-plus { background: #dbeafe; color: #1e40af; }
+        .grade-badge.B { background: #dbeafe; color: #1e40af; }
+        .grade-badge.B-minus { background: #dbeafe; color: #1e40af; }
+        .grade-badge.C-plus { background: #fef3c7; color: #92400e; }
+        .grade-badge.C { background: #fef3c7; color: #92400e; }
+        .grade-badge.C-minus { background: #fef3c7; color: #92400e; }
+        .grade-badge.D { background: #fed7aa; color: #9a3412; }
+        .grade-badge.F { background: #fee2e2; color: #991b1b; }
+        .grade-badge.Pending { background: #e2e8f0; color: #475569; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-badge.graded {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-badge.missed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1200px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .export-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 16px;
+            text-decoration: none;
+        }
+
+        .export-btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .export-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+         <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Exam Management</h1>
+                <p>Teacher Dashboard</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/examManagement" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 9h6M9 13h6M9 17h4"/>
+                    </svg>
+                    Examinations
+                </a>
+                <!-- <a href="/studentExam" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Students
+                </a> -->
+                <a href="/reports" class="nav-item active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                        <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                    </svg>
+                    Reports
+                </a>
+                <a href="#" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    Settings
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-avatar">T</div>
+                <div class="user-info">
+                    <h4>Teacher</h4>
+                    <p>teacher@school.edu</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <a href="/reports" class="back-button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+                Back to Reports
+            </a>
+
+            <!-- Report Header -->
+            <div class="report-header" id="reportHeader">
+                <div class="loading-overlay">
+                    <div class="spinner"></div>
+                    <div style="margin-left: 16px; color: #64748b;">Loading report data...</div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="charts-row">
+                <!-- Grade Distribution Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h2>Grade Distribution</h2>
+                        <p>Number of students per grade category</p>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="gradeChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Score Ranges Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h2>Score Distribution</h2>
+                        <p>Score ranges in percentage</p>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="scoreChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Scores Table -->
+            <div class="students-table">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>Student Scores</h2>
+                    <button class="export-btn" onclick="exportToCSV()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Export to CSV
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Email</th>
+                                <th>Score</th>
+                                <th>Percentage</th>
+                                <th>Grade</th>
+                                <th>Status</th>
+                                <th>Submission Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                    Loading student data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            checkAccess(["teacher"]);
+            updateSidebarUserInfo();
+            loadReportData();
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const examId = urlParams.get('examId');
+        let performanceData = null;
+        let studentScores = [];
+        let gradeChart = null;
+        let scoreChart = null;
+
+        async function loadReportData() {
+            if (!examId) {
+                alert('No exam ID provided');
+                window.location.href = '/reports';
+                return;
+            }
+
+            try {
+                // Load performance data
+                const perfResponse = await axios.get(`/reports/exam/${examId}/performance`);
+                performanceData = perfResponse.data;
+
+                // Load student scores
+                const scoresResponse = await axios.get(`/reports/exam/${examId}/student-scores`);
+                studentScores = scoresResponse.data;
+
+                renderHeader(performanceData);
+                renderCharts(performanceData);
+                renderStudentTable(studentScores, performanceData.exam_info.total_points);
+
+                // Hide loading overlay
+                document.querySelector('.loading-overlay').style.display = 'none';
+
+            } catch (error) {
+                console.error('Error loading report data:', error);
+                document.querySelector('.loading-overlay').innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="color: #ef4444; margin-bottom: 16px;">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                        </div>
+                        <div style="font-size: 16px; color: #1e293b; margin-bottom: 8px;">
+                            Failed to load report data
+                        </div>
+                        <div style="font-size: 14px; color: #64748b; margin-bottom: 16px;">
+                            ${error.response?.data?.detail || error.message}
+                        </div>
+                        <a href="/reports" class="back-button">Back to Reports</a>
+                    </div>
+                `;
+            }
+        }
+
+        function renderHeader(data) {
+            const header = document.getElementById('reportHeader');
+            
+            const examInfo = data.exam_info;
+            const stats = data.statistics;
+            
+            const avgPercentage = examInfo.total_points > 0 
+                ? Math.round((stats.average_score / examInfo.total_points) * 100) 
+                : 0;
+            
+            const submissionRate = stats.total_students > 0
+                ? Math.round((stats.submitted / stats.total_students) * 100)
+                : 0;
+
+            header.innerHTML = `
+                <h1>${examInfo.title}</h1>
+                <div class="report-header-meta">
+                    <span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        ${formatDate(examInfo.date)}
+                    </span>
+                    <span>•</span>
+                    <span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                        ${examInfo.course_code} - ${examInfo.course_name}
+                    </span>
+                    <span>•</span>
+                    <span>Exam Code: ${examInfo.exam_code}</span>
+                    <span>•</span>
+                    <span>Total Points: ${examInfo.total_points}</span>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-box-label">Total Students</div>
+                        <div class="stat-box-value blue">${stats.total_students}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label">Submitted</div>
+                        <div class="stat-box-value green">${stats.submitted} (${submissionRate}%)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label">Graded</div>
+                        <div class="stat-box-value orange">${stats.graded}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label">Average Score</div>
+                        <div class="stat-box-value purple">${stats.average_score} / ${examInfo.total_points} (${avgPercentage}%)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label">Highest Score</div>
+                        <div class="stat-box-value green">${stats.highest_score} / ${examInfo.total_points}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label">Lowest Score</div>
+                        <div class="stat-box-value red">${stats.lowest_score} / ${examInfo.total_points}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label">Pass Rate</div>
+                        <div class="stat-box-value ${stats.pass_rate >= 50 ? 'green' : 'red'}">${stats.pass_rate}%</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCharts(data) {
+            // Grade Distribution Chart
+            renderGradeChart(data.grade_distribution);
+            
+            // Score Ranges Chart
+            renderScoreChart(data.score_ranges);
+        }
+
+        function renderGradeChart(gradeDistribution) {
+            const ctx = document.getElementById('gradeChart').getContext('2d');
+            
+            if (gradeChart) {
+                gradeChart.destroy();
+            }
+
+            const labels = gradeDistribution.map(g => g.grade);
+            const counts = gradeDistribution.map(g => g.count);
+            const percentages = gradeDistribution.map(g => g.percentage);
+
+            const colors = [
+                'rgba(16, 185, 129, 0.8)',   // A+
+                'rgba(16, 185, 129, 0.7)',   // A
+                'rgba(16, 185, 129, 0.6)',   // A-
+                'rgba(59, 130, 246, 0.8)',   // B+
+                'rgba(59, 130, 246, 0.7)',   // B
+                'rgba(59, 130, 246, 0.6)',   // B-
+                'rgba(245, 158, 11, 0.8)',   // C+
+                'rgba(245, 158, 11, 0.7)',   // C
+                'rgba(245, 158, 11, 0.6)',   // C-
+                'rgba(249, 115, 22, 0.8)',   // D
+                'rgba(239, 68, 68, 0.8)',    // F
+                'rgba(148, 163, 184, 0.8)'   // Pending
+            ];
+
+            gradeChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Number of Students',
+                        data: counts,
+                        backgroundColor: colors,
+                        borderColor: colors.map(c => c.replace('0.8', '1').replace('0.7', '1').replace('0.6', '1')),
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        barThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const grade = gradeDistribution[context.dataIndex];
+                                    return [
+                                        `Students: ${grade.count}`,
+                                        `Percentage: ${grade.percentage}%`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                font: {
+                                    size: 12
+                                },
+                                color: '#64748b'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Students',
+                                font: {
+                                    size: 13,
+                                    weight: '600'
+                                },
+                                color: '#475569'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: {
+                                    size: 12,
+                                    weight: '500'
+                                },
+                                color: '#475569'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderScoreChart(scoreRanges) {
+            const ctx = document.getElementById('scoreChart').getContext('2d');
+            
+            if (scoreChart) {
+                scoreChart.destroy();
+            }
+
+            const labels = scoreRanges.map(r => r.range);
+            const counts = scoreRanges.map(r => r.count);
+            const percentages = scoreRanges.map(r => r.percentage);
+
+            const colors = [
+                'rgba(16, 185, 129, 0.8)',   // 90-100
+                'rgba(16, 185, 129, 0.6)',   // 80-89
+                'rgba(59, 130, 246, 0.8)',   // 70-79
+                'rgba(59, 130, 246, 0.6)',   // 60-69
+                'rgba(245, 158, 11, 0.8)',   // 50-59
+                'rgba(245, 158, 11, 0.6)',   // 40-49
+                'rgba(249, 115, 22, 0.8)',   // 30-39
+                'rgba(249, 115, 22, 0.6)',   // 20-29
+                'rgba(239, 68, 68, 0.8)',    // 10-19
+                'rgba(239, 68, 68, 0.6)'     // 0-9
+            ];
+
+            scoreChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: percentages,
+                        backgroundColor: colors,
+                        borderColor: 'white',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const range = scoreRanges[context.dataIndex];
+                                    return [
+                                        `Range: ${range.range}%`,
+                                        `Students: ${range.count}`,
+                                        `Percentage: ${range.percentage}%`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderStudentTable(students, totalPoints) {
+            const tbody = document.getElementById('studentsTableBody');
+            
+            if (!students || students.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            No student data available for this exam
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = students.map(student => {
+                const studentIdDisplay = student.student_number || `STU${String(student.student_id).padStart(4, '0')}`;
+                
+                let scoreDisplay = '-';
+                let percentageDisplay = '-';
+                let gradeDisplay = '-';
+                
+                if (student.score !== null && totalPoints > 0) {
+                    scoreDisplay = `${student.score} / ${totalPoints}`;
+                    const percentage = Math.round((student.score / totalPoints) * 100);
+                    percentageDisplay = `${percentage}%`;
+                    
+                    if (student.score_grade) {
+                        const gradeClass = student.score_grade.replace('+', '-plus').replace('-', '-minus');
+                        gradeDisplay = `<span class="grade-badge ${gradeClass}">${student.score_grade}</span>`;
+                    }
+                }
+                
+                let statusDisplay = '-';
+                if (student.status === 'graded') {
+                    statusDisplay = '<span class="status-badge graded">Graded</span>';
+                } else if (student.status === 'pending') {
+                    statusDisplay = '<span class="status-badge pending">Pending Review</span>';
+                } else if (!student.status || student.status === 'missed') {
+                    statusDisplay = '<span class="status-badge missed">Not Submitted</span>';
+                }
+
+                const submissionDate = student.submission_date 
+                    ? formatDate(student.submission_date) 
+                    : '-';
+
+                return `
+                    <tr>
+                        <td>${studentIdDisplay}</td>
+                        <td>${student.user_email}</td>
+                        <td><strong>${scoreDisplay}</strong></td>
+                        <td>${percentageDisplay}</td>
+                        <td>${gradeDisplay}</td>
+                        <td>${statusDisplay}</td>
+                        <td>${submissionDate}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            try {
+                const date = new Date(dateStr);
+                const day = date.getDate().toString().padStart(2, '0');
+                const month = date.toLocaleString('en-US', { month: 'short' });
+                const year = date.getFullYear();
+                return `${day} ${month} ${year}`;
+            } catch (e) {
+                return dateStr;
+            }
+        }
+
+        function exportToCSV() {
+            if (!performanceData || !studentScores.length) {
+                alert('No data to export');
+                return;
+            }
+
+            const examInfo = performanceData.exam_info;
+            
+            // Create CSV headers
+            let csv = `"${examInfo.title} - Performance Report"\n`;
+            csv += `"Course: ${examInfo.course_code} - ${examInfo.course_name}"\n`;
+            csv += `"Exam Date: ${formatDate(examInfo.date)}"\n`;
+            csv += `"Total Points: ${examInfo.total_points}"\n\n`;
+            
+            // Add statistics
+            const stats = performanceData.statistics;
+            csv += '"STATISTICS"\n';
+            csv += `"Total Students",${stats.total_students}\n`;
+            csv += `"Submitted",${stats.submitted}\n`;
+            csv += `"Graded",${stats.graded}\n`;
+            csv += `"Average Score",${stats.average_score}\n`;
+            csv += `"Highest Score",${stats.highest_score}\n`;
+            csv += `"Lowest Score",${stats.lowest_score}\n`;
+            csv += `"Pass Rate",${stats.pass_rate}%\n\n`;
+            
+            // Add student data
+            csv += '"STUDENT SCORES"\n';
+            csv += '"Student ID","Email","Score","Percentage","Grade","Status","Submission Date"\n';
+            
+            studentScores.forEach(student => {
+                const studentId = student.student_number || `STU${String(student.student_id).padStart(4, '0')}`;
+                const score = student.score !== null ? student.score : '';
+                const percentage = (student.score !== null && examInfo.total_points > 0) 
+                    ? Math.round((student.score / examInfo.total_points) * 100) 
+                    : '';
+                const grade = student.score_grade || '';
+                const status = student.status || 'Not Submitted';
+                const date = student.submission_date ? formatDate(student.submission_date) : '';
+                
+                csv += `"${studentId}","${student.user_email}","${score}","${percentage}","${grade}","${status}","${date}"\n`;
+            });
+            
+            // Create and download file
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Exam_Report_${examInfo.exam_code}_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
