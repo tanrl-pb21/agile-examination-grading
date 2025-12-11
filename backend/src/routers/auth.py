@@ -45,6 +45,7 @@ class RegisterRequest(BaseModel):
     confirm_password: str
     role: str = "student"
     student_id: str = None
+    staff_id: str = None
     
     @field_validator("email", mode="before")
     @classmethod
@@ -159,12 +160,13 @@ def login(request: LoginRequest):
         raise HTTPException(status_code=500, detail="Login failed. Please try again.")
 
 
+
 @router.post("/register")
 def register(request: RegisterRequest):
     """
     Register a new user account.
     For students: email, password, and student_id are required.
-    For teachers: only email and password are required.
+    For teachers: email, password, and staff_id are required.
     """
     try:
         print(f"🔍 POST /auth/register - Email: {request.email}, Role: {request.role}")
@@ -178,7 +180,8 @@ def register(request: RegisterRequest):
             email=request.email,
             password=request.password,
             role=request.role,
-            student_id=request.student_id
+            student_id=request.student_id,
+            staff_id=request.staff_id
         )
         
         # Send welcome email (optional - don't fail registration if email fails)
@@ -205,7 +208,7 @@ def register(request: RegisterRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Registration failed. Please try again.")
-
+    
 
 @router.post("/forgot-password")
 def forgot_password(request: ForgotPasswordRequest):

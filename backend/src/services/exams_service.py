@@ -355,10 +355,10 @@ class ExamService:
             return
 
     def add_exam(
-        self, title, exam_code, course, date, start_time, end_time, status="scheduled"
+        self, title, exam_code, course, date, start_time, end_time, status="scheduled", created_by=None
     ):
         """Add a new exam with full validation"""
-        print(f"🔍 add_exam called: {title}, {exam_code}, course={course}")
+        print(f"🔍 add_exam called: {title}, {exam_code}, course={course}, created_by={created_by}")
 
         # Validate all inputs
         title = validate_title(title)
@@ -375,6 +375,10 @@ class ExamService:
 
         if status not in ["scheduled", "completed", "cancelled"]:
             raise ValueError("Status must be one of: scheduled, completed, cancelled")
+
+        # ✅ NEW: Validate created_by
+        if not created_by or created_by <= 0:
+            raise ValueError("User ID (created_by) is required")
 
         # Check exam code uniqueness
         if self.exam_code_exists(exam_code):
@@ -400,10 +404,11 @@ class ExamService:
         except Exception as e:
             print(f"WARNING: Conflict check failed but proceeding: {e}")
 
+        # ✅ UPDATED: Include created_by in INSERT
         sql = """
-            INSERT INTO exams (title, exam_code, course, date, start_time, end_time, duration, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id, title, exam_code, course, date, start_time, end_time, duration, status;
+            INSERT INTO exams (title, exam_code, course, date, start_time, end_time, duration, status, created_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, title, exam_code, course, date, start_time, end_time, duration, status, created_by;
         """
 
         with get_conn() as conn:
@@ -419,114 +424,21 @@ class ExamService:
                         end_time,
                         duration,
                         status,
+                        created_by,  # ✅ Add created_by
                     ),
                 )
                 row = cur.fetchone()
-                print(f"✅ Exam created with id={row['id']}")
+                print(f"✅ Exam created with id={row['id']} by teacher_id={created_by}")
                 return row
-
-    def update_exam(
-        self,
-        exam_id,
-        title,
-        exam_code,
-        course,
-        date,
-        start_time,
-        end_time,
-        status="scheduled",
-    ):
-        """Update an existing exam with full validation"""
-        print(f"🔍 update_exam called: id={exam_id}, {title}, status={status}")
-
-        if not exam_id:
-            raise ValueError("Exam ID is required")
-
-        # Validate all inputs
-        title = validate_title(title)
-        exam_code = validate_exam_code(exam_code)
-
-        if not course:
-            raise ValueError("Course is required")
-
-        if not start_time or not end_time:
-            raise ValueError("Start time and end time are required")
-
-        if not date:
-            raise ValueError("Date is required")
-
-        if status not in ["scheduled", "published", "completed", "cancelled"]:
-            raise ValueError("Status must be one of: scheduled, published, completed, cancelled")
-
-        # Check exam code uniqueness (excluding current exam)
-        if self.exam_code_exists(exam_code, exclude_exam_id=exam_id):
-            raise ValueError(f"Exam code '{exam_code}' already exists")
-
-        # Parse date if string
-        if isinstance(date, str):
-            date_obj = datetime.strptime(date, "%Y-%m-%d").date()
-        else:
-            date_obj = date
-
-        # Only validate date is in future for scheduled/published exams
-        # Allow past dates for completed/cancelled exams
-        if status in ["scheduled", "published"]:
-            validate_date_obj(date_obj)
-
-        # Calculate duration
-        duration = calculate_duration(start_time, end_time)
-
-        # Only check for exam conflicts for scheduled/published exams
-        # Skip conflict check for completed/cancelled exams
-        if status in ["scheduled", "published"]:
-            try:
-                self.check_exam_conflicts(
-                    course, date_obj, start_time, end_time, exclude_exam_id=exam_id
-                )
-            except ValueError:
-                raise  # Re-raise validation errors
-            except Exception as e:
-                print(f"WARNING: Conflict check failed but proceeding: {e}")
-
-        sql = """
-            UPDATE exams
-            SET title = %s, exam_code = %s, course = %s, date = %s, start_time = %s, end_time = %s, duration = %s, status = %s
-            WHERE id = %s
-            RETURNING id, title, exam_code, course, date, start_time, end_time, duration, status;
-        """
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(
-                    sql,
-                    (
-                        title,
-                        exam_code,
-                        course,
-                        date_obj,
-                        start_time,
-                        end_time,
-                        duration,
-                        status,
-                        exam_id,
-                    ),
-                )
-                row = cur.fetchone()
-
-        if not row:
-            raise ValueError(f"Exam with id {exam_id} not found")
-
-        print(f"✅ Exam {exam_id} updated to status: {status}")
-        return row
-
 
     def get_exam(self, exam_id: int):
         """Get a single exam by ID"""
         if not exam_id or exam_id <= 0:
             raise ValueError("Exam ID must be a positive integer")
 
+        # ✅ UPDATED: Include created_by in SELECT
         sql = """
-            SELECT id, title, exam_code, course, date, start_time, end_time, duration, status
+            SELECT id, title, exam_code, course, date, start_time, end_time, duration, status, created_by
             FROM exams
             WHERE id = %s;
         """
@@ -587,6 +499,44 @@ class ExamService:
 
             traceback.print_exc()
             # Return empty list instead of raising to prevent UI timeout
+            return []
+        
+    def get_teacher_exams(self, teacher_id: int):
+        """Get all exams created by a specific teacher"""
+        if not teacher_id or teacher_id <= 0:
+            raise ValueError("Teacher ID must be a positive integer")
+
+        print(f"🔍 ExamService.get_teacher_exams() called for teacher_id={teacher_id}")
+
+        sql = """
+            SELECT id, title, exam_code, course, date, start_time, end_time, duration, status, created_by
+            FROM exams
+            WHERE created_by = %s
+            ORDER BY date DESC, start_time DESC
+            LIMIT 1000;
+        """
+
+        try:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(sql, (teacher_id,))
+                    rows = cur.fetchall()
+
+            # Convert time objects to HH:MM string format
+            if rows:
+                for row in rows:
+                    if row["start_time"] and not isinstance(row["start_time"], str):
+                        row["start_time"] = row["start_time"].strftime("%H:%M")
+                    if row["end_time"] and not isinstance(row["end_time"], str):
+                        row["end_time"] = row["end_time"].strftime("%H:%M")
+
+            print(f"✅ Returning {len(rows) if rows else 0} exams for teacher {teacher_id}")
+            return rows if rows else []
+
+        except Exception as e:
+            print(f"❌ ERROR in get_teacher_exams: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return []
 
     def get_student_exams(self, student_id: int):
@@ -980,6 +930,109 @@ class ExamService:
                 "message": f"Server error: {str(e)}",
                 "question_count": 0
             }
+            
+    def update_exam(
+        self, exam_id: int, title=None, exam_code=None, course=None, 
+        date=None, start_time=None, end_time=None, status=None
+    ):
+        """
+        Update an existing exam with validation.
+        Only updates fields that are provided (not None).
+        """
+        print(f"🔍 update_exam called: exam_id={exam_id}, title={title}, exam_code={exam_code}, course={course}")
+
+        # Validate exam exists
+        if not exam_id or exam_id <= 0:
+            raise ValueError("Exam ID must be a positive integer")
+
+        existing_exam = self.get_exam(exam_id)
+        if not existing_exam:
+            raise ValueError(f"Exam with id {exam_id} not found")
+
+        # Use existing values if not provided
+        title = title or existing_exam['title']
+        exam_code = exam_code or existing_exam['exam_code']
+        course = course or existing_exam['course']
+        date = date or existing_exam['date']
+        start_time = start_time or existing_exam['start_time']
+        end_time = end_time or existing_exam['end_time']
+        status = status or existing_exam['status']
+
+        # Validate all inputs
+        title = validate_title(title)
+        exam_code = validate_exam_code(exam_code)
+
+        if not course:
+            raise ValueError("Course is required")
+
+        if not start_time or not end_time:
+            raise ValueError("Start time and end time are required")
+
+        if not date:
+            raise ValueError("Date is required")
+
+        valid_statuses = ["scheduled", "published", "completed", "cancelled"]
+        if status not in valid_statuses:
+            raise ValueError(f"Status must be one of: {', '.join(valid_statuses)}")
+
+        # Check if exam code is unique (excluding current exam)
+        if exam_code != existing_exam['exam_code'] and self.exam_code_exists(exam_code, exclude_exam_id=exam_id):
+            raise ValueError(f"Exam code '{exam_code}' already exists")
+
+        # Parse date if string
+        if isinstance(date, str):
+            date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+        else:
+            date_obj = date
+
+        # Validate date
+        validate_date_obj(date_obj)
+
+        # Convert start_time and end_time to strings if they're time objects
+        if not isinstance(start_time, str):
+            start_time = start_time.strftime("%H:%M") if hasattr(start_time, "strftime") else str(start_time)
+        if not isinstance(end_time, str):
+            end_time = end_time.strftime("%H:%M") if hasattr(end_time, "strftime") else str(end_time)
+
+        # Calculate duration first to validate times
+        duration = calculate_duration(start_time, end_time)
+
+        # Check for exam conflicts (excluding current exam)
+        try:
+            self.check_exam_conflicts(course, date_obj, start_time, end_time, exclude_exam_id=exam_id)
+        except ValueError:
+            raise  # Re-raise validation errors
+        except Exception as e:
+            print(f"WARNING: Conflict check failed but proceeding: {e}")
+
+        # Update exam in database
+        sql = """
+            UPDATE exams 
+            SET title = %s, exam_code = %s, course = %s, date = %s, 
+                start_time = %s, end_time = %s, duration = %s, status = %s
+            WHERE id = %s
+            RETURNING id, title, exam_code, course, date, start_time, end_time, duration, status, created_by;
+        """
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    sql,
+                    (
+                        title,
+                        exam_code,
+                        course,
+                        date_obj,
+                        start_time,
+                        end_time,
+                        duration,
+                        status,
+                        exam_id,
+                    ),
+                )
+                row = cur.fetchone()
+                print(f"✅ Exam {exam_id} updated successfully")
+                return row
                 
     def publish_exam(self, exam_id: int) -> dict:
         """
