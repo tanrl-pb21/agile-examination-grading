@@ -394,10 +394,43 @@
 
 
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
+       document.addEventListener("DOMContentLoaded", async function () {
+            // 1. Get exam ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const examId = urlParams.get('id');
+            
+            if (!examId) {
+                alert('Error: No exam ID provided. Please select a valid exam.');
+                window.location.href = '/examManagement';
+                return;
+            }
+            
+            // 2. Get token from localStorage
+            const token = localStorage.getItem('auth_token');
+            
+            if (!token) {
+                console.warn('⚠️ No token found. Redirecting to login...');
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 3. Add token to all axios requests
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            console.log('✅ JWT token configured in axios');
+            console.log('Auth header:', axios.defaults.headers.common['Authorization']);
+            console.log('Exam ID:', examId);
+            
+            // 4. Check access and update sidebar
             checkAccess(["teacher"]);
             updateSidebarUserInfo();
+            
+            // 5. Make examId globally available for other functions
+            window.examId = examId;
+            
+            // 6. Initialize the page
+            await loadExamData();
         });
+
         const urlParams = new URLSearchParams(window.location.search);
         const examId = urlParams.get('id');
        
@@ -548,6 +581,7 @@
 
         async function loadExamData() {
             try {
+                const examId = window.examId;
                 console.log('Fetching exam with ID:', examId);
                
                 // Verify exam ID exists
@@ -1424,8 +1458,6 @@ function transformSubmissions(submissions) {
             window.location.href = `/examGrading?submissionId=${submissionId}&examId=${examId}`;
         }
 
-
-        init();
     </script>
 </body>
 </html>

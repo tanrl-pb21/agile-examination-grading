@@ -185,6 +185,8 @@
     <script>
         // Setup axios to include JWT token in all requests
         document.addEventListener("DOMContentLoaded", function () {
+
+           
             // Get token from localStorage
             const token = localStorage.getItem('auth_token');
             
@@ -198,7 +200,9 @@
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             
             console.log('✅ JWT token configured in axios');
-            
+             console.log('Auth header:', axios.defaults.headers.common['Authorization']);
+            console.log('Exam ID:', examId);
+
             // Now call your existing functions
             checkAccess(["teacher"]);
             updateSidebarUserInfo();
@@ -362,7 +366,7 @@
             try {
                 console.log('Fetching courses from /courses...');
                 
-                const res = await axios.get('/courses', {
+                const res = await axios.get('/courses/my-courses', {
                     timeout: 10000,  // 5 seconds instead of 30
                     headers: {
                         'Accept': 'application/json'

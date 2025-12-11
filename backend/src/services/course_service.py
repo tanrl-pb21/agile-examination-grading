@@ -66,6 +66,48 @@ class CourseService:
                 courses = cur.fetchall()
         
         return courses
+    
+    def get_instructor_courses(self, instructor_id: int, status: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get all courses assigned to a specific instructor.
+        Optional filter by status (active/inactive).
+        """
+        sql = """
+            SELECT 
+                c.id,
+                c.course_name,
+                c.course_code,
+                c.description,
+                c.status,
+                COUNT(DISTINCT sc.student_id) as number_student,
+                COALESCE(
+                    STRING_AGG(DISTINCT u.user_email, ', '),
+                    'No instructor assigned'
+                ) as instructor
+            FROM public.course c
+            INNER JOIN public."intrcutorCourse" ic ON c.id = ic.course_id
+            LEFT JOIN public."studentCourse" sc ON c.id = sc.course_id
+            LEFT JOIN public."user" u ON ic.intructor_id = u.id AND u.user_role = 'teacher'
+            WHERE ic.intructor_id = %s
+        """
+        
+        params = [instructor_id]
+        
+        if status:
+            sql += " AND c.status = %s"
+            params.append(status)
+        
+        sql += """
+            GROUP BY c.id, c.course_name, c.course_code, c.description, c.status
+            ORDER BY c.course_name;
+        """
+        
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, params)
+                courses = cur.fetchall()
+        
+        return courses
 
     def get_course_by_id(self, course_id: int) -> Optional[Dict[str, Any]]:
         """Get detailed information about a specific course"""
