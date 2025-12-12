@@ -2,6 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from main import app
+import jwt
+from datetime import datetime, timedelta
+import os
 from pytest_bdd import (
     scenarios,
     given as bdd_given,
@@ -11,6 +14,21 @@ from pytest_bdd import (
 )
 
 client = TestClient(app)
+JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this-in-production")
+JWT_ALGORITHM = "HS256"
+
+def create_test_token(user_id: int = 1) -> str:
+    """Create a valid JWT token for testing"""
+    payload = {
+        "user_id": user_id,
+        "exp": datetime.utcnow() + timedelta(hours=1)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def get_auth_headers(user_id: int = 1) -> dict:
+    """Get Authorization headers with valid JWT token"""
+    token = create_test_token(user_id)
+    return {"Authorization": f"Bearer {token}"}
 
 
 # -------------------------------
@@ -129,12 +147,12 @@ def setup_mock_database(context, exam_id, submitted_count=0, exam_exists=True):
 
 def setup_mock_exam_service(context, exam_id, exists=True):
     """Setup mock for ExamService.get_exam"""
-    context.mock_exam_service_patcher = patch("src.routers.exams.ExamService.get_exam")
+    context.mock_exam_service_patcher = patch("src.routers.exams.service.get_exam")
     mock_get_exam = context.mock_exam_service_patcher.start()
     
     if exists:
         mock_exam = {
-            "exam_id": exam_id,
+            "id": exam_id,  # ✅ Changed from "exam_id" to "id"
             "title": f"Sample Exam {exam_id}",
             "exam_code": f"EX{exam_id:03d}",
             "course": "CS101",
@@ -142,12 +160,12 @@ def setup_mock_exam_service(context, exam_id, exists=True):
             "start_time": "10:00",
             "end_time": "12:00",
             "status": "scheduled",
+            "created_by": 1,  # ✅ ADDED - Must match the user_id in auth headers!
         }
         mock_get_exam.return_value = mock_exam
     else:
         mock_get_exam.return_value = None
-
-
+        
 # -------------------------------
 # GIVEN STEPS
 # -------------------------------
@@ -166,8 +184,9 @@ def exam_exists(context, eid):
     # This will be overridden by specific "N students submitted" steps if present
     setup_mock_database(context, eid, submitted_count=1)
     
-    # Verify exam can be fetched
-    res = client.get(f"/exams/{eid}")
+    # ✅ Add auth headers when verifying exam
+    auth_headers = get_auth_headers(user_id=1)
+    res = client.get(f"/exams/{eid}", headers=auth_headers)
     print(f"📋 GET /exams/{eid} - Response status: {res.status_code}")
     assert res.status_code == 200
     

@@ -45,6 +45,7 @@ class RegisterRequest(BaseModel):
     confirm_password: str
     role: str = "student"
     student_id: str = None
+    staff_id: str = None
     
     @field_validator("email", mode="before")
     @classmethod
@@ -159,12 +160,15 @@ def login(request: LoginRequest):
         raise HTTPException(status_code=500, detail="Login failed. Please try again.")
 
 
+
 @router.post("/register")
 def register(request: RegisterRequest):
     """
     Register a new user account.
     For students: email, password, and student_id are required.
-    For teachers: only email and password are required.
+    For teachers: email, password, and staff_id are required.
+    
+    Prevents registration if student_id or staff_id already exists.
     """
     try:
         print(f"🔍 POST /auth/register - Email: {request.email}, Role: {request.role}")
@@ -173,12 +177,25 @@ def register(request: RegisterRequest):
         if request.password != request.confirm_password:
             raise ValueError("Passwords do not match")
         
+        # Check for existing student_id BEFORE calling auth_service.register
+        if request.role == "student":
+            if request.student_id and auth_service.student_id_exists(request.student_id):
+                print(f"❌ Student ID already exists: {request.student_id}")
+                raise ValueError(f"Student ID '{request.student_id}' is already registered")
+        
+        # Check for existing staff_id BEFORE calling auth_service.register
+        if request.role == "teacher":
+            if request.staff_id and auth_service.staff_id_exists(request.staff_id):
+                print(f"❌ Staff ID already exists: {request.staff_id}")
+                raise ValueError(f"Staff ID '{request.staff_id}' is already registered")
+        
         # Register user
         user = auth_service.register(
             email=request.email,
             password=request.password,
             role=request.role,
-            student_id=request.student_id
+            student_id=request.student_id,
+            staff_id=request.staff_id
         )
         
         # Send welcome email (optional - don't fail registration if email fails)
@@ -205,8 +222,7 @@ def register(request: RegisterRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Registration failed. Please try again.")
-
-
+    
 @router.post("/forgot-password")
 def forgot_password(request: ForgotPasswordRequest):
     """

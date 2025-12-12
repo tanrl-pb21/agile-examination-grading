@@ -192,7 +192,44 @@ class AuthService:
             traceback.print_exc()
             raise ValueError("Authentication failed. Please try again.")
 
-    def register(self, email: str, password: str, role: str = "student", student_id: str = None) -> dict:
+    @staticmethod
+    def validate_staff_id(staff_id: str) -> str:
+        """
+        Validate staff ID format.
+        Format: __XXX_____ (numbers and letters)
+        Example: 12ABC34567
+        """
+        if not staff_id or len(staff_id.strip()) == 0:
+            raise ValueError("Staff ID is required")
+        
+        staff_id = staff_id.strip().upper()
+        
+        # Check length (10 characters)
+        if len(staff_id) != 10:
+            raise ValueError("Staff ID must be exactly 10 characters long")
+        
+        # Validate format: __XXX_____ (2 digits, 3 letters, 5 digits)
+        pattern = r'^[0-9]{2}[A-Z]{3}[0-9]{5}$'
+        if not re.match(pattern, staff_id):
+            raise ValueError("Staff ID format must be: 2 digits + 3 letters + 5 digits (e.g., 12ABC34567)")
+        
+        return staff_id
+
+    def staff_id_exists(self, staff_id: str) -> bool:
+        """Check if staff ID already exists"""
+        try:
+            staff_id = staff_id.strip().upper()
+            sql = "SELECT id FROM \"user\" WHERE UPPER(lecturer_id) = UPPER(%s) LIMIT 1;"
+            
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, (staff_id,))
+                    return cur.fetchone() is not None
+        except Exception as e:
+            print(f"ERROR checking if staff ID exists: {str(e)}")
+            return False
+    
+    def register(self, email: str, password: str, role: str = "student", student_id: str = None, staff_id: str = None) -> dict:
         """
         Register a new user.
         
@@ -201,6 +238,7 @@ class AuthService:
             password: User password
             role: User role (student, teacher, admin) - defaults to student
             student_id: Student ID (required for student role)
+            staff_id: Staff ID (required for teacher role)
         
         Returns:
             User data dictionary
@@ -226,6 +264,16 @@ class AuthService:
                 if self.student_id_exists(student_id):
                     raise ValueError(f"Student ID '{student_id}' is already registered")
             
+            # Validate staff ID for teacher role
+            if role == "teacher":
+                if not staff_id:
+                    raise ValueError("Staff ID is required for teacher registration")
+                staff_id = self.validate_staff_id(staff_id)
+                
+                # Check if staff ID already exists
+                if self.staff_id_exists(staff_id):
+                    raise ValueError(f"Staff ID '{staff_id}' is already registered")
+            
             # Check if user already exists
             if self.user_exists_by_email(email):
                 raise ValueError(f"User with email '{email}' already exists")
@@ -244,15 +292,15 @@ class AuthService:
                     with conn.cursor(row_factory=dict_row) as cur:
                         cur.execute(sql, (email, hashed_password, role, student_id))
                         user = cur.fetchone()
-            else:
+            else:  # teacher role
                 sql = """
-                    INSERT INTO "user" (user_email, user_password, user_role, created_at)
-                    VALUES (%s, %s, %s, NOW())
-                    RETURNING id, user_email, user_role, created_at;
+                    INSERT INTO "user" (user_email, user_password, user_role, lecturer_id, created_at)
+                    VALUES (%s, %s, %s, %s, NOW())
+                    RETURNING id, user_email, user_role, lecturer_id, created_at;
                 """
                 with get_conn() as conn:
                     with conn.cursor(row_factory=dict_row) as cur:
-                        cur.execute(sql, (email, hashed_password, role))
+                        cur.execute(sql, (email, hashed_password, role, staff_id))
                         user = cur.fetchone()
             
             print(f"✅ User registered: {email} with role: {role}")
@@ -266,6 +314,8 @@ class AuthService:
             
             if role == "student":
                 result["student_id"] = user["student_id"]
+            else:
+                result["staff_id"] = user["lecturer_id"]
             
             return result
             
@@ -276,7 +326,7 @@ class AuthService:
             import traceback
             traceback.print_exc()
             raise ValueError("Registration failed. Please try again.")
-
+        
     def request_password_reset(self, email: str) -> dict:
         """
         Request password reset by email.

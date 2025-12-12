@@ -273,14 +273,14 @@
             background: #22c55e;
         }
 
-        .student-id-error {
+        .id-error {
             color: #991b1b;
             font-size: 12px;
             margin-top: 4px;
             display: none;
         }
 
-        .student-id-error.show {
+        .id-error.show {
             display: block;
         }
 
@@ -458,10 +458,10 @@
                             placeholder="e.g. 12ABC34567" 
                             maxlength="10"
                             required
-                            oninput="validateStudentId()"
+                            oninput="validateId('studentId', 'studentIdError')"
                         >
                     </div>
-                    <div class="student-id-error" id="studentIdError"></div>
+                    <div class="id-error" id="studentIdError"></div>
                 </div>
 
                 <div class="form-group">
@@ -545,6 +545,26 @@
                             required
                         >
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="staffId">Staff ID (Format: 12ABC34567)</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <input 
+                            type="text" 
+                            id="staffId" 
+                            name="staff_id" 
+                            placeholder="e.g. 12ABC34567" 
+                            maxlength="10"
+                            required
+                            oninput="validateId('staffId', 'staffIdError')"
+                        >
+                    </div>
+                    <div class="id-error" id="staffIdError"></div>
                 </div>
 
                 <div class="form-group">
@@ -670,20 +690,21 @@
             document.getElementById('successMessage').classList.remove('show');
         }
 
-        // Student ID validation
-        function validateStudentId() {
-            const studentId = document.getElementById('studentId').value.trim().toUpperCase();
-            const errorDiv = document.getElementById('studentIdError');
+        // Generic ID validation (works for both student and staff ID)
+        function validateId(inputId, errorDivId) {
+            const idInput = document.getElementById(inputId);
+            const errorDiv = document.getElementById(errorDivId);
+            const id = idInput.value.trim().toUpperCase();
             
             // Pattern: 2 digits + 3 letters + 5 digits (e.g., 12ABC34567)
             const pattern = /^[0-9]{2}[A-Z]{3}[0-9]{5}$/;
             
-            if (studentId.length === 0) {
+            if (id.length === 0) {
                 errorDiv.classList.remove('show');
                 return;
             }
             
-            if (!pattern.test(studentId)) {
+            if (!pattern.test(id)) {
                 errorDiv.textContent = '❌ Format must be: 2 digits + 3 letters + 5 digits (e.g., 12ABC34567)';
                 errorDiv.classList.add('show');
             } else {
@@ -738,37 +759,31 @@
             hideError();
             hideSuccess();
 
-            let email, password, confirmPassword, studentId;
+            let email, password, confirmPassword, id;
 
             if (role === 'student') {
                 email = document.getElementById('studentEmail').value;
                 password = document.getElementById('studentPassword').value;
                 confirmPassword = document.getElementById('studentConfirmPassword').value;
-                studentId = document.getElementById('studentId').value.trim().toUpperCase();
+                id = document.getElementById('studentId').value.trim().toUpperCase();
             } else {
                 email = document.getElementById('teacherEmail').value;
                 password = document.getElementById('teacherPassword').value;
                 confirmPassword = document.getElementById('teacherConfirmPassword').value;
+                id = document.getElementById('staffId').value.trim().toUpperCase();
             }
 
             // Validation
-            if (!email || !password || !confirmPassword) {
+            if (!email || !password || !confirmPassword || !id) {
                 showError('Please fill in all required fields');
                 return;
             }
 
-            if (role === 'student' && !studentId) {
-                showError('Student ID is required');
+            // Validate ID format
+            const pattern = /^[0-9]{2}[A-Z]{3}[0-9]{5}$/;
+            if (!pattern.test(id)) {
+                showError('ID format must be: 2 digits + 3 letters + 5 digits (e.g., 12ABC34567)');
                 return;
-            }
-
-            // Validate student ID format
-            if (role === 'student') {
-                const pattern = /^[0-9]{2}[A-Z]{3}[0-9]{5}$/;
-                if (!pattern.test(studentId)) {
-                    showError('Student ID format must be: 2 digits + 3 letters + 5 digits (e.g., 12ABC34567)');
-                    return;
-                }
             }
 
             if (password !== confirmPassword) {
@@ -790,7 +805,9 @@
                 };
 
                 if (role === 'student') {
-                    payload.student_id = studentId;
+                    payload.student_id = id;
+                } else {
+                    payload.staff_id = id;
                 }
 
                 const response = await axios.post('/auth/register', payload);

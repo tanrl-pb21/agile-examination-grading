@@ -1,11 +1,21 @@
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from src.services.exams_service import ExamService
 from pydantic import BaseModel, field_validator, model_validator
 from datetime import date, datetime, time
+import jwt
+import os
+
 
 router = APIRouter(prefix="/exams", tags=["Exams"])
 service = ExamService()
+security = HTTPBearer()
 
+
+# JWT Configuration - MUST MATCH auth router
+JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this-in-production")
+JWT_ALGORITHM = "HS256"
 
 class ExamCreate(BaseModel):
     title: str
@@ -90,6 +100,29 @@ class ExamCreate(BaseModel):
                 raise ValueError("Exam start time cannot be in the past")
 
         return self
+    
+def get_current_user_id(credentials: HTTPAuthorizationCredentials  = Depends(security)) -> int:
+    """
+    Extract user_id from JWT token in Authorization header.
+    Raises HTTPException if token is invalid or expired.
+    """
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("user_id")
+        
+        if not user_id:
+            raise HTTPException(status_code=401, detail="user_id not found in token")
+        
+        return int(user_id)
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        print(f"❌ ERROR extracting user_id: {str(e)}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
 
 def convert_time_to_string(exam_dict):
@@ -116,11 +149,16 @@ def convert_time_to_string(exam_dict):
 
 # IMPORTANT: GET routes should come BEFORE parameterized routes to avoid conflicts
 @router.get("")
-def get_all_exams():
-    """Get all exams - this must be defined before /{exam_id} route"""
+def get_all_exams(user_id: int = Depends(get_current_user_id)):
+    """
+    Get all exams created by the logged-in teacher.
+    Requires valid JWT token in Authorization header.
+    """
     try:
-        print("📋 GET /exams - Fetching all exams...")
-        exams = service.get_all_exams()
+        print(f"📋 GET /exams - Fetching exams for teacher_id={user_id}...")
+        
+        # ✅ Call get_teacher_exams instead of get_all_exams
+        exams = service.get_teacher_exams(user_id)
 
         if not exams:
             print("✅ No exams found, returning empty list")
@@ -128,13 +166,12 @@ def get_all_exams():
 
         # Convert time objects to strings for all exams
         converted_exams = [convert_time_to_string(exam) for exam in exams]
-        print(f"✅ Returning {len(converted_exams)} exams")
+        print(f"✅ Returning {len(converted_exams)} exams for teacher {user_id}")
         return converted_exams
 
     except Exception as e:
         print(f"❌ ERROR in get_all_exams: {str(e)}")
         import traceback
-
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
@@ -183,19 +220,25 @@ def get_upcoming_exams_for_student(student_id: int = 1):
 
 
 @router.get("/{exam_id}")
-def get_exam(exam_id: int):
-    """Get a single exam by ID"""
+def get_exam(exam_id: int, user_id: int = Depends(get_current_user_id)):
+    """Get a single exam by ID (must be created by logged-in user)"""
     try:
-        print(f"📋 GET /exams/{exam_id} - Fetching single exam...")
+        print(f"📋 GET /exams/{exam_id} - Fetching exam for teacher_id={user_id}...")
         exam = service.get_exam(exam_id)
         if not exam:
             raise HTTPException(404, "Exam not found")
+        
+        # ✅ Security check: ensure user owns this exam
+        if exam.get('created_by') != user_id:
+            raise HTTPException(403, "You don't have permission to view this exam")
+        
         return convert_time_to_string(exam)
     except HTTPException:
         raise
     except Exception as e:
         print(f"❌ ERROR in get_exam: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
 
 @router.get("/exams/{exam_id}/open")
 def open_exam(exam_id: int):
@@ -220,8 +263,14 @@ def open_exam(exam_id: int):
 
 
 @router.post("", status_code=201)
-def add_exam(exam: ExamCreate):
+def add_exam(exam: ExamCreate, user_id: int = Depends(get_current_user_id)):
+    """
+    Create a new exam.
+    Automatically sets created_by to the logged-in user's ID.
+    """
     try:
+        print(f"🔍 POST /exams - Creating exam for teacher_id={user_id}")
+        
         result = service.add_exam(
             title=exam.title,
             exam_code=exam.exam_code,
@@ -230,15 +279,37 @@ def add_exam(exam: ExamCreate):
             start_time=exam.start_time,
             end_time=exam.end_time,
             status=exam.status,
+            created_by=user_id,  # ✅ Set to logged-in user's ID
         )
+        
+        print(f"✅ Exam created with id={result['id']} by teacher_id={user_id}")
         return convert_time_to_string(result)
+        
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"❌ ERROR in add_exam: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/{exam_id}")
-def update_exam(exam_id: int, exam: ExamCreate):
+def update_exam(exam_id: int, exam: ExamCreate, user_id: int = Depends(get_current_user_id)):
+    """
+    Update an existing exam.
+    Only the creator can update it.
+    """
     try:
+        print(f"🔍 PUT /exams/{exam_id} - Updating exam for teacher_id={user_id}")
+        
+        # Check if exam exists and belongs to user
+        existing_exam = service.get_exam(exam_id)
+        if not existing_exam:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        
+        # ✅ Security check: ensure user owns this exam
+        if existing_exam.get('created_by') != user_id:
+            raise HTTPException(status_code=403, detail="You don't have permission to update this exam")
+        
         result = service.update_exam(
             exam_id=exam_id,
             title=exam.title,
@@ -249,21 +320,50 @@ def update_exam(exam_id: int, exam: ExamCreate):
             end_time=exam.end_time,
             status=exam.status,
         )
+        
         if not result:
             raise HTTPException(status_code=404, detail="Exam not found")
+        
         return convert_time_to_string(result)
+        
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
 @router.delete("/{exam_id}")
-def delete_exam(exam_id: int):
+def delete_exam(exam_id: int, user_id: int = Depends(get_current_user_id)):
+    """
+    Delete an exam.
+    Only the creator can delete it.
+    """
     try:
-        service.delete_exam(exam_id)
-        return {"message": "Exam deleted successfully"}
+        print(f"🔍 DELETE /exams/{exam_id} - Deleting exam for teacher_id={user_id}")
+        
+        # Check if exam exists and belongs to user
+        existing_exam = service.get_exam(exam_id)
+        if not existing_exam:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        
+        # Security check: ensure user owns this exam
+        if existing_exam.get('created_by') != user_id:
+            raise HTTPException(status_code=403, detail="You don't have permission to delete this exam")
+        
+        # Delete the exam
+        result = service.delete_exam(exam_id)
+        
+        print(f"✅ Exam {exam_id} deleted successfully")
+        return {"message": "Exam deleted successfully", "id": exam_id}
+        
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    
+    except Exception as e:
+        print(f"❌ ERROR in delete_exam: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @router.get("/search/title")
 def search_exams_by_title(title: str):
