@@ -211,16 +211,12 @@
 
         .grade-badge.A-plus { background: #d1fae5; color: #065f46; }
         .grade-badge.A { background: #d1fae5; color: #065f46; }
-        .grade-badge.A-minus { background: #d1fae5; color: #065f46; }
-        .grade-badge.B-plus { background: #dbeafe; color: #1e40af; }
         .grade-badge.B { background: #dbeafe; color: #1e40af; }
-        .grade-badge.B-minus { background: #dbeafe; color: #1e40af; }
-        .grade-badge.C-plus { background: #fef3c7; color: #92400e; }
         .grade-badge.C { background: #fef3c7; color: #92400e; }
-        .grade-badge.C-minus { background: #fef3c7; color: #92400e; }
         .grade-badge.D { background: #fed7aa; color: #9a3412; }
         .grade-badge.F { background: #fee2e2; color: #991b1b; }
         .grade-badge.Pending { background: #e2e8f0; color: #475569; }
+        .grade-badge.Not-Submitted { background: #cbd5e1; color: #334155; }
 
         .status-badge {
             display: inline-block;
@@ -243,19 +239,6 @@
         .status-badge.missed {
             background: #fee2e2;
             color: #991b1b;
-        }
-
-        .charts-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            margin-bottom: 24px;
-        }
-
-        @media (max-width: 1200px) {
-            .charts-row {
-                grid-template-columns: 1fr;
-            }
         }
 
         .export-btn {
@@ -303,15 +286,6 @@
                     </svg>
                     Examinations
                 </a>
-                <!-- <a href="/studentExam" class="nav-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                    Students
-                </a> -->
                 <a href="/reports" class="nav-item active">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
@@ -354,28 +328,14 @@
                 </div>
             </div>
 
-            <!-- Charts Row -->
-            <div class="charts-row">
-                <!-- Grade Distribution Chart -->
-                <div class="chart-container">
-                    <div class="chart-header">
-                        <h2>Grade Distribution</h2>
-                        <p>Number of students per grade category</p>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="gradeChart"></canvas>
-                    </div>
+            <!-- Grade Distribution Chart (Full Width) -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>Grade Distribution</h2>
+                    <p>Number of students per grade category</p>
                 </div>
-
-                <!-- Score Ranges Chart -->
-                <div class="chart-container">
-                    <div class="chart-header">
-                        <h2>Score Distribution</h2>
-                        <p>Score ranges in percentage</p>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="scoreChart"></canvas>
-                    </div>
+                <div class="chart-wrapper">
+                    <canvas id="gradeChart"></canvas>
                 </div>
             </div>
 
@@ -430,7 +390,6 @@
         let performanceData = null;
         let studentScores = [];
         let gradeChart = null;
-        let scoreChart = null;
 
         async function loadReportData() {
             if (!examId) {
@@ -449,7 +408,7 @@
                 studentScores = scoresResponse.data;
 
                 renderHeader(performanceData);
-                renderCharts(performanceData);
+                renderCharts(performanceData, studentScores);
                 renderStudentTable(studentScores, performanceData.exam_info.total_points);
 
                 // Hide loading overlay
@@ -551,12 +510,63 @@
             `;
         }
 
-        function renderCharts(data) {
-            // Grade Distribution Chart
-            renderGradeChart(data.grade_distribution);
+        function renderCharts(data, students) {
+            // Calculate grade distribution including pending
+            const gradeDistribution = calculateGradeDistribution(data.grade_distribution, students);
+            renderGradeChart(gradeDistribution);
+        }
+
+        function calculateGradeDistribution(apiDistribution, students) {
+            // Count pending students (submitted but not graded)
+            const pendingCount = students.filter(s => s.status === 'pending').length;
             
-            // Score Ranges Chart
-            renderScoreChart(data.score_ranges);
+            // Count not submitted students
+            const notSubmittedCount = students.filter(s => !s.status || s.status === 'missed' || s.status === 'not_submitted').length;
+            
+            // Create a map from the API distribution
+            const gradeMap = {};
+            apiDistribution.forEach(item => {
+                gradeMap[item.grade] = item;
+            });
+            
+            // Define all possible grades in order (matching your backend grading system)
+            const allGrades = ['A', 'B', 'C', 'D', 'F', 'Pending', 'Not Submitted'];
+            
+            // Build complete distribution - show ALL grades
+            const completeDistribution = allGrades.map(grade => {
+                const totalStudents = students.length;
+                
+                if (grade === 'Pending') {
+                    const percentage = totalStudents > 0 ? Math.round((pendingCount / totalStudents) * 100) : 0;
+                    return {
+                        grade: 'Pending',
+                        count: pendingCount,
+                        percentage: percentage
+                    };
+                }
+                
+                if (grade === 'Not Submitted') {
+                    const percentage = totalStudents > 0 ? Math.round((notSubmittedCount / totalStudents) * 100) : 0;
+                    return {
+                        grade: 'Not Submitted',
+                        count: notSubmittedCount,
+                        percentage: percentage
+                    };
+                }
+                
+                if (gradeMap[grade]) {
+                    return gradeMap[grade];
+                }
+                
+                return {
+                    grade: grade,
+                    count: 0,
+                    percentage: 0
+                };
+            });
+            
+            // Return ALL grades, including those with 0 count
+            return completeDistribution;
         }
 
         function renderGradeChart(gradeDistribution) {
@@ -568,22 +578,18 @@
 
             const labels = gradeDistribution.map(g => g.grade);
             const counts = gradeDistribution.map(g => g.count);
-            const percentages = gradeDistribution.map(g => g.percentage);
 
-            const colors = [
-                'rgba(16, 185, 129, 0.8)',   // A+
-                'rgba(16, 185, 129, 0.7)',   // A
-                'rgba(16, 185, 129, 0.6)',   // A-
-                'rgba(59, 130, 246, 0.8)',   // B+
-                'rgba(59, 130, 246, 0.7)',   // B
-                'rgba(59, 130, 246, 0.6)',   // B-
-                'rgba(245, 158, 11, 0.8)',   // C+
-                'rgba(245, 158, 11, 0.7)',   // C
-                'rgba(245, 158, 11, 0.6)',   // C-
-                'rgba(249, 115, 22, 0.8)',   // D
-                'rgba(239, 68, 68, 0.8)',    // F
-                'rgba(148, 163, 184, 0.8)'   // Pending
-            ];
+            const colorMap = {
+                'A': 'rgba(16, 185, 129, 0.7)',
+                'B': 'rgba(59, 130, 246, 0.8)',
+                'C': 'rgba(245, 158, 11, 0.8)',
+                'D': 'rgba(249, 115, 22, 0.8)',
+                'F': 'rgba(239, 68, 68, 0.8)',
+                'Pending': 'rgba(148, 163, 184, 0.8)',
+                'Not Submitted': 'rgba(100, 116, 139, 0.6)'
+            };
+
+            const colors = labels.map(label => colorMap[label] || 'rgba(148, 163, 184, 0.8)');
 
             gradeChart = new Chart(ctx, {
                 type: 'bar',
@@ -658,73 +664,6 @@
             });
         }
 
-        function renderScoreChart(scoreRanges) {
-            const ctx = document.getElementById('scoreChart').getContext('2d');
-            
-            if (scoreChart) {
-                scoreChart.destroy();
-            }
-
-            const labels = scoreRanges.map(r => r.range);
-            const counts = scoreRanges.map(r => r.count);
-            const percentages = scoreRanges.map(r => r.percentage);
-
-            const colors = [
-                'rgba(16, 185, 129, 0.8)',   // 90-100
-                'rgba(16, 185, 129, 0.6)',   // 80-89
-                'rgba(59, 130, 246, 0.8)',   // 70-79
-                'rgba(59, 130, 246, 0.6)',   // 60-69
-                'rgba(245, 158, 11, 0.8)',   // 50-59
-                'rgba(245, 158, 11, 0.6)',   // 40-49
-                'rgba(249, 115, 22, 0.8)',   // 30-39
-                'rgba(249, 115, 22, 0.6)',   // 20-29
-                'rgba(239, 68, 68, 0.8)',    // 10-19
-                'rgba(239, 68, 68, 0.6)'     // 0-9
-            ];
-
-            scoreChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: percentages,
-                        backgroundColor: colors,
-                        borderColor: 'white',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                padding: 20,
-                                usePointStyle: true,
-                                pointStyle: 'circle',
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const range = scoreRanges[context.dataIndex];
-                                    return [
-                                        `Range: ${range.range}%`,
-                                        `Students: ${range.count}`,
-                                        `Percentage: ${range.percentage}%`
-                                    ];
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
         function renderStudentTable(students, totalPoints) {
             const tbody = document.getElementById('studentsTableBody');
             
@@ -755,6 +694,8 @@
                         const gradeClass = student.score_grade.replace('+', '-plus').replace('-', '-minus');
                         gradeDisplay = `<span class="grade-badge ${gradeClass}">${student.score_grade}</span>`;
                     }
+                } else if (student.status === 'pending') {
+                    gradeDisplay = '<span class="grade-badge Pending">Pending</span>';
                 }
                 
                 let statusDisplay = '-';
