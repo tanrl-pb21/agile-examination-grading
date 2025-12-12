@@ -51,8 +51,28 @@ window.updateSidebarUserInfo = function() {
 }
 
 function handleLogout() {
-    localStorage.removeItem("user_info");
-    alert('Logged out successfully.'); 
-    window.location.href = "/login";
-}
+    Swal.fire({
+        icon: 'question',
+        title: 'Confirm Logout',
+        text: 'Are you sure you want to log out?',
+        showCancelButton: true,
+        confirmButtonText: 'Logout',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            localStorage.removeItem("user_info");
+            localStorage.removeItem("access_token");
 
+            Swal.fire({
+                icon: 'success',
+                title: 'Logged Out',
+                text: 'You have been logged out successfully.',
+                timer: 1200,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = "/login";
+            });
+        }
+    });
+}
