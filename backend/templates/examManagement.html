@@ -128,7 +128,7 @@
             <div class="modal-header-stepper">
                 <div>
                     <h3 id="examModalTitle">Create New Exam</h3>
-                    <p class="modal-step-text">Step 1: Basic Information</p>
+                    <p class="modal-step-text">Basic Information</p>
                 </div>
                 <button class="modal-close-btn" onclick="closeModal()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -180,7 +180,7 @@
                     
                     <div class="modal-footer-buttons">
                         <button type="button" class="btn-modal-cancel" onclick="closeModal()">Cancel</button>
-                        <button type="submit" class="btn-primary" id="examSubmitBtn">Next: Add Questions</button>
+                        <button type="submit" class="btn-primary" id="examSubmitBtn">Create Exam</button>
                     </div>
                 </form>
             </div>
@@ -723,7 +723,7 @@ document.addEventListener('visibilitychange', () => {
             resetForm();
             updateCourseSelect();
             document.getElementById('examModalTitle').textContent = 'Create New Exam';
-            document.getElementById('examSubmitBtn').textContent = 'Next: Add Questions';
+            document.getElementById('examSubmitBtn').textContent = 'Create Exam';
             document.getElementById('examModal').classList.add('active');
         }
 
