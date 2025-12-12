@@ -47,4 +47,12 @@ window.updateSidebarUserInfo = function() {
             : "U";
         avatarEl.textContent = initial;
     }
+
 }
+
+function handleLogout() {
+    localStorage.removeItem("user_info");
+    alert('Logged out successfully.'); 
+    window.location.href = "/login";
+}
+

@@ -1239,7 +1239,7 @@ tbody tr:hover {
 
 /* Sidebar */
 .sidebar {
-    width: 220px;
+    width: 240px;
     background-color: #fff;
     border-right: 1px solid #e9ecef;
     display: flex;
@@ -1308,6 +1308,8 @@ tbody tr:hover {
     border-top: 1px solid #e9ecef;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 .user-avatar {
@@ -1321,17 +1323,51 @@ tbody tr:hover {
     color: #4a6cf7;
     font-weight: 600;
     font-size: 16px;
-    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.user-info {
+    flex: 1;
+    margin-left: 12px;
+    min-width: 0;
 }
 
 .user-info h4 {
     font-size: 14px;
     font-weight: 600;
     color: #1a1a2e;
+    margin: 0;
 }
 
 .user-info p {
     font-size: 12px;
+    color: #6c757d;
+    margin: 0;
+}
+
+.auth-btn {
+    width: 24px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.auth-btn:hover {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+.auth-btn svg {
+    width: 18px;
+    height: 18px;
     color: #6c757d;
 }
 
@@ -3583,3 +3619,5 @@ tbody tr:hover {
         max-width: 100px;
     }
 }
+
+
