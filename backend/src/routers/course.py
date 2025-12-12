@@ -77,6 +77,10 @@ class CourseStatusUpdate(BaseModel):
 class InstructorAssignment(BaseModel):
     instructor_id: int
 
+class StudentEnrollment(BaseModel):
+    student_id: int
+    course_id: int
+    
 
 @router.get("")
 def get_all_courses(status: Optional[str] = None):
@@ -254,5 +258,49 @@ def remove_instructor_from_course(course_id: int, instructor_id: int):
         if not result:
             raise HTTPException(status_code=404, detail="Instructor assignment not found")
         return {"message": "Instructor removed successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+###### Student Enroll #########
+@router.get("/student/{student_id}/enrolled")
+def get_student_enrolled_courses(student_id: int):
+    """Get all courses a student is enrolled in"""
+    try:
+        courses = service.get_student_courses(student_id)
+        return courses
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/student/{student_id}/available")
+def get_available_courses_for_student(student_id: int):
+    """Get all courses a student can enroll in (not already enrolled)"""
+    try:
+        courses = service.get_available_courses_for_student(student_id)
+        return courses
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/enroll")
+def enroll_student_in_course(enrollment: StudentEnrollment):
+    """Enroll a student in a course"""
+    try:
+        result = service.enroll_student(enrollment.student_id, enrollment.course_id)
+        return {"message": "Successfully enrolled in course", "enrollment": result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/unenroll/{student_id}/{course_id}")
+def unenroll_student_from_course(student_id: int, course_id: int):
+    """Unenroll a student from a course"""
+    try:
+        result = service.unenroll_student(student_id, course_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Enrollment not found")
+        return {"message": "Successfully unenrolled from course"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -436,3 +436,169 @@ class CourseService:
                 instructors = cur.fetchall()
         
         return instructors
+    
+ ################################ NEW METHODS FOR STUDENT ENROLLMENT ################################
+    def get_student_courses(self, student_id: int) -> List[Dict[str, Any]]:
+        """Get all courses a student is enrolled in"""
+        sql = """
+            SELECT 
+                c.id,
+                c.course_name,
+                c.course_code,
+                c.description,
+                c.status,
+                COUNT(DISTINCT sc2.student_id) as number_student,
+                COALESCE(
+                    STRING_AGG(DISTINCT u.user_email, ', '),
+                    'No instructor assigned'
+                ) as instructor,
+                sc.id as enrollment_id
+            FROM public."studentCourse" sc
+            JOIN public.course c ON sc.course_id = c.id
+            LEFT JOIN public."studentCourse" sc2 ON c.id = sc2.course_id
+            LEFT JOIN public."intrcutorCourse" ic ON c.id = ic.course_id
+            LEFT JOIN public."user" u ON ic.intructor_id = u.id AND u.user_role = 'teacher'
+            WHERE sc.student_id = %s AND c.status = 'active'
+            GROUP BY c.id, c.course_name, c.course_code, c.description, c.status, sc.id
+            ORDER BY c.course_name;
+        """
+        
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (student_id,))
+                courses = cur.fetchall()
+        
+        return courses
+
+    def get_available_courses_for_student(self, student_id: int) -> List[Dict[str, Any]]:
+        """Get all courses a student can enroll in (not already enrolled and active)"""
+        sql = """
+            SELECT 
+                c.id,
+                c.course_name,
+                c.course_code,
+                c.description,
+                c.status,
+                COUNT(DISTINCT sc.student_id) as number_student,
+                COALESCE(
+                    STRING_AGG(DISTINCT u.user_email, ', '),
+                    'No instructor assigned'
+                ) as instructor
+            FROM public.course c
+            LEFT JOIN public."studentCourse" sc ON c.id = sc.course_id
+            LEFT JOIN public."intrcutorCourse" ic ON c.id = ic.course_id
+            LEFT JOIN public."user" u ON ic.intructor_id = u.id AND u.user_role = 'teacher'
+            WHERE c.status = 'active'
+            AND c.id NOT IN (
+                SELECT course_id 
+                FROM public."studentCourse" 
+                WHERE student_id = %s
+            )
+            GROUP BY c.id, c.course_name, c.course_code, c.description, c.status
+            ORDER BY c.course_name;
+        """
+        
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (student_id,))
+                courses = cur.fetchall()
+        
+        return courses
+
+    def enroll_student(self, student_id: int, course_id: int) -> Dict[str, Any]:
+        """Enroll a student in a course"""
+        # Check if student exists
+        check_student_sql = """
+            SELECT id, user_email FROM public."user" 
+            WHERE id = %s AND user_role = 'student';
+        """
+        
+        # Check if course exists and is active
+        check_course_sql = """
+            SELECT id, course_name, status FROM public.course 
+            WHERE id = %s;
+        """
+        
+        # Check if already enrolled
+        check_enrollment_sql = """
+            SELECT id FROM public."studentCourse" 
+            WHERE student_id = %s AND course_id = %s;
+        """
+        
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                # Verify student exists
+                cur.execute(check_student_sql, (student_id,))
+                student = cur.fetchone()
+                
+                if not student:
+                    raise ValueError("Student not found or user is not a student")
+                
+                # Verify course exists and is active
+                cur.execute(check_course_sql, (course_id,))
+                course = cur.fetchone()
+                
+                if not course:
+                    raise ValueError("Course not found")
+                
+                if course['status'] != 'active':
+                    raise ValueError("Cannot enroll in an inactive course")
+                
+                # Check if already enrolled
+                cur.execute(check_enrollment_sql, (student_id, course_id))
+                existing = cur.fetchone()
+                
+                if existing:
+                    raise ValueError("Student is already enrolled in this course")
+                
+                # Create enrollment
+                insert_sql = """
+                    INSERT INTO public."studentCourse" (student_id, course_id)
+                    VALUES (%s, %s)
+                    RETURNING id, student_id, course_id;
+                """
+                
+                cur.execute(insert_sql, (student_id, course_id))
+                enrollment = cur.fetchone()
+                conn.commit()
+        
+        return {
+            'id': enrollment['id'],
+            'student_id': enrollment['student_id'],
+            'course_id': enrollment['course_id'],
+            'course_name': course['course_name'],
+            'student_email': student['user_email']
+        }
+
+    def unenroll_student(self, student_id: int, course_id: int) -> bool:
+        """Unenroll a student from a course"""
+        sql = """
+            DELETE FROM public."studentCourse"
+            WHERE student_id = %s AND course_id = %s
+            RETURNING id;
+        """
+        
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (student_id, course_id))
+                deleted = cur.fetchone()
+                
+                if deleted:
+                    conn.commit()
+                    return True
+        
+        return False
+
+    def is_student_enrolled(self, student_id: int, course_id: int) -> bool:
+        """Check if a student is enrolled in a specific course"""
+        sql = """
+            SELECT id FROM public."studentCourse"
+            WHERE student_id = %s AND course_id = %s;
+        """
+        
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (student_id, course_id))
+                result = cur.fetchone()
+        
+        return result is not None

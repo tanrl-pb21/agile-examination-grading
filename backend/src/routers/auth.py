@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from src.services.auth_service import AuthService
 from src.services.email_service import EmailService
 import os
@@ -97,8 +97,8 @@ def generate_jwt_token(user_id: int, email: str, role: str) -> str:
         "user_id": user_id,
         "email": email,
         "role": role,
-        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS),
-        "iat": datetime.utcnow()
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),  # CHANGED
+        "iat": datetime.now(timezone.utc)  # CHANGED
     }
     
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -115,7 +115,7 @@ def get_redirect_url_by_role(role: str) -> str:
     - student -> /student/exams
     """
     role_routes = {
-        "admin": "/admin/dashboard",
+        "admin": "/courseManagement",
         "teacher": "/examManagement",
         "student": "/studentExam"
     }

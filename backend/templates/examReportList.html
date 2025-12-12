@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Reports - Teacher Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/auth.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead th {
+            text-align: left;
+            padding: 12px;
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        tbody td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 14px;
+            color: #1e293b;
+        }
+        
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+        
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #3b82f6;
+            color: white;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        
+        .action-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .search-box {
+            position: relative;
+            margin-bottom: 24px;
+            max-width: 400px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .search-box svg {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: #94a3b8;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #10b981;
+            border-radius: 4px;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .warning-message {
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .success-message {
+            background: #d1fae5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .info-message {
+            background: #dbeafe;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .refresh-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: auto;
+        }
+        
+        .refresh-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .page-title {
+            flex: 1;
+        }
+        
+        .page-actions {
+            display: flex;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Exam Management</h1>
+                <p>Teacher Dashboard</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/examManagement" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 9h6M9 13h6M9 17h4"/>
+                    </svg>
+                    Examinations
+                </a>
+                <a href="/reports" class="nav-item active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                        <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                    </svg>
+                    Reports
+                </a>
+                <a href="#" class="nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    Settings
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-avatar" id="userAvatar">T</div>
+                <div class="user-info">
+                    <h4 id="userRole">Teacher</h4>
+                    <p id="userEmail">teacher@school.edu</p>
+                    <p id="userId" style="font-size: 12px; color: #64748b; margin-top: 4px; display: none;">ID: Loading...</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <div class="page-title">
+                    <h2>Exam Performance Reports</h2>
+                    <p id="pageSubtitle">View performance statistics for completed examinations</p>
+                </div>
+                <div class="page-actions">
+                    <button class="refresh-btn" onclick="refreshReports()" title="Refresh reports">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6"/>
+                            <path d="M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Message Area -->
+            <div id="messageArea"></div>
+
+            <!-- Summary Stats -->
+            <div class="stats-grid" id="summaryStats">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalExams">0</div>
+                    <div class="stat-label">Total Completed Exams</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgScore">0%</div>
+                    <div class="stat-label">Average Score</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalStudents">0</div>
+                    <div class="stat-label">Total Students</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="submissionRate">0%</div>
+                    <div class="stat-label">Submission Rate</div>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search by exam title, code, or course..." 
+                       onkeyup="filterExams()">
+            </div>
+
+            <!-- Exams Table -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>EXAM TITLE</th>
+                            <th>EXAM CODE</th>
+                            <th>DATE</th>
+                            <th>COURSE</th>
+                            <th>TOTAL STUDENTS</th>
+                            <th>SUBMISSION RATE</th>
+                            <th>AVG SCORE</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="examsTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                                    <div class="loading-spinner"></div>
+                                    Loading your reports...
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Global variables
+        let exams = [];
+        let currentInstructorId = null;
+
+        // Initialize when page loads
+        document.addEventListener("DOMContentLoaded", function () {
+            // Check if user is teacher/instructor
+            checkAccess(["teacher", "instructor"]);
+            
+            // Load the instructor's exams
+            loadInstructorExams();
+        });
+
+        // Get user info from localStorage (from auth.js)
+        function getUserInfo() {
+            try {
+                const raw = localStorage.getItem("user_info");
+                if (!raw) {
+                    throw new Error("No user information found. Please log in.");
+                }
+                
+                const userInfo = JSON.parse(raw);
+                if (!userInfo || !userInfo.id) {
+                    throw new Error("Invalid user information.");
+                }
+                
+                return userInfo;
+            } catch (error) {
+                console.error("Error getting user info:", error);
+                // showMessage('error', error.message);
+                return null;
+            }
+        }
+
+        // Get instructor ID from user info
+        function getInstructorId() {
+            if (currentInstructorId) return currentInstructorId;
+            
+            const userInfo = getUserInfo();
+            if (!userInfo) return null;
+            
+            // Check if user is teacher/instructor
+            if (userInfo.role !== "teacher" && userInfo.role !== "instructor") {
+                // showMessage('error', 'You do not have instructor permissions.');
+                return null;
+            }
+            
+            currentInstructorId = userInfo.id;
+            return currentInstructorId;
+        }
+
+        // Update sidebar with user info
+        function updateSidebarUserInfo() {
+            const userInfo = getUserInfo();
+            if (!userInfo) return;
+
+            // Update email
+            const emailEl = document.getElementById('userEmail');
+            if (emailEl && userInfo.email) {
+                emailEl.textContent = userInfo.email;
+            }
+
+            // Update role
+            const roleEl = document.getElementById('userRole');
+            if (roleEl && userInfo.role) {
+                const roleName = userInfo.role.charAt(0).toUpperCase() + userInfo.role.slice(1);
+                roleEl.textContent = roleName;
+            }
+
+            // Update avatar
+            const avatarEl = document.getElementById('userAvatar');
+            if (avatarEl) {
+                let initial = "U";
+                if (userInfo.name) {
+                    initial = userInfo.name.charAt(0).toUpperCase();
+                } else if (userInfo.email) {
+                    initial = userInfo.email.charAt(0).toUpperCase();
+                }
+                avatarEl.textContent = initial;
+            }
+
+            // Update user ID (for debugging)
+            const userIdEl = document.getElementById('userId');
+            if (userIdEl && userInfo.id) {
+                userIdEl.textContent = `ID: ${userInfo.id}`;
+                userIdEl.style.display = 'block';
+            }
+        }
+
+        // Show message in message area
+        function showMessage(type, message) {
+            const messageArea = document.getElementById('messageArea');
+            if (!messageArea) return;
+            
+            let className = '';
+            let icon = '';
+            
+            switch(type) {
+                case 'error':
+                    className = 'error-message';
+                    icon = '❌';
+                    break;
+                case 'warning':
+                    className = 'warning-message';
+                    icon = '⚠️';
+                    break;
+                case 'success':
+                    className = 'success-message';
+                    icon = '✅';
+                    break;
+                default:
+                    className = 'info-message';
+                    icon = 'ℹ️';
+            }
+            
+            messageArea.innerHTML = `
+                <div class="${className}">
+                    <span>${icon}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            // Auto-hide after 5 seconds for non-error messages
+            if (type !== 'error') {
+                setTimeout(() => {
+                    if (messageArea.innerHTML.includes(message)) {
+                        messageArea.innerHTML = '';
+                    }
+                }, 5000);
+            }
+        }
+
+        // Show loading state in table
+        function showLoading(message = "Loading...") {
+            const tbody = document.getElementById('examsTableBody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            <div class="loading-spinner"></div>
+                            ${message}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Load exams for the current instructor
+        async function loadInstructorExams() {
+            try {
+                // Get instructor ID
+                const instructorId = getInstructorId();
+                
+                if (!instructorId) {
+                    // showMessage('error', 'Unable to identify your instructor account.');
+                    showLoading("Unable to load reports");
+                    return;
+                }
+                
+                console.log('Loading exams for instructor ID:', instructorId);
+                
+                // Update sidebar with user info
+                updateSidebarUserInfo();
+                
+                // Update page subtitle
+                updatePageSubtitle(instructorId);
+                
+                // Show loading state
+                showLoading("Loading your exam reports...");
+                
+                // Make API call with instructor_id as query parameter
+                const response = await axios.get('/reports/completed-exams', {
+                    params: {
+                        instructor_id: instructorId
+                    },
+                    timeout: 10000 // 10 second timeout
+                });
+                
+                exams = response.data || [];
+                console.log('Successfully loaded', exams.length, 'exams for instructor', instructorId);
+                
+                // Update summary stats
+                updateSummaryStats(exams);
+                
+                // Render exams table
+                renderExams(exams, instructorId);
+                
+                // Show message if no exams
+                if (exams.length === 0) {
+                    // showMessage('info', 'No completed exams found for your courses. Exams will appear here once they are marked as "completed".');
+                } else {
+                    // showMessage('success', `Found ${exams.length} completed exams for your courses.`);
+                    
+                    // Auto-hide success message after 3 seconds
+                    setTimeout(() => {
+                        const messageArea = document.getElementById('messageArea');
+                        if (messageArea && messageArea.innerHTML.includes('Found')) {
+                            messageArea.innerHTML = '';
+                        }
+                    }, 3000);
+                }
+                
+            } catch (error) {
+                console.error('Failed to load reports:', error);
+                
+                let errorMessage = 'Failed to load reports. ';
+                
+                if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+                    errorMessage = 'Request timed out. Please try again.';
+                } else if (error.response) {
+                    // Server responded with error status
+                    if (error.response.status === 401) {
+                        errorMessage = 'Authentication error. Please log in again.';
+                        // Redirect to login
+                        setTimeout(() => {
+                            window.location.href = '/login';
+                        }, 2000);
+                    } else if (error.response.status === 403) {
+                        errorMessage = 'Access denied. You do not have permission to view these reports.';
+                    } else if (error.response.status === 404) {
+                        errorMessage = 'No exams found for your instructor account.';
+                    } else {
+                        errorMessage += `Server error: ${error.response.status} - ${error.response.data?.detail || 'Unknown error'}`;
+                    }
+                } else if (error.request) {
+                    // Request made but no response
+                    errorMessage = 'No response from server. Please check your connection.';
+                } else {
+                    // Other errors
+                    errorMessage += error.message;
+                }
+                
+                // showMessage('error', errorMessage);
+                showLoading(errorMessage);
+            }
+        }
+
+        // Update page subtitle with instructor info
+        function updatePageSubtitle(instructorId) {
+            const userInfo = getUserInfo();
+            const subtitle = document.getElementById('pageSubtitle');
+            
+            if (subtitle) {
+                if (userInfo && userInfo.name) {
+                    subtitle.textContent = `Viewing performance statistics for ${userInfo.name}'s completed examinations`;
+                } else if (instructorId) {
+                    subtitle.textContent = `Viewing performance statistics for your completed examinations (ID: ${instructorId})`;
+                } else {
+                    subtitle.textContent = 'View performance statistics for completed examinations';
+                }
+            }
+        }
+
+        // Update summary statistics
+        function updateSummaryStats(exams) {
+            if (!exams || exams.length === 0) {
+                // Reset stats to 0
+                document.getElementById('totalExams').textContent = '0';
+                document.getElementById('avgScore').textContent = '0%';
+                document.getElementById('totalStudents').textContent = '0';
+                document.getElementById('submissionRate').textContent = '0%';
+                return;
+            }
+            
+            // Total exams
+            document.getElementById('totalExams').textContent = exams.length;
+            
+            // Average score (convert to percentage if needed)
+            const avgScores = exams.filter(e => e.average_score > 0).map(e => e.average_score);
+            const avgScore = avgScores.length > 0 
+                ? (avgScores.reduce((a, b) => a + b, 0) / avgScores.length).toFixed(1) 
+                : 0;
+            document.getElementById('avgScore').textContent = `${avgScore}%`;
+            
+            // Total students
+            const totalStudents = exams.reduce((sum, exam) => sum + (exam.total_students || 0), 0);
+            document.getElementById('totalStudents').textContent = totalStudents.toLocaleString();
+            
+            // Average submission rate
+            const submissionRates = exams.filter(e => e.total_students > 0).map(e => 
+                (e.submitted / e.total_students) * 100
+            );
+            const avgRate = submissionRates.length > 0 
+                ? (submissionRates.reduce((a, b) => a + b, 0) / submissionRates.length).toFixed(1)
+                : 0;
+            document.getElementById('submissionRate').textContent = `${avgRate}%`;
+        }
+
+        // Render exams table
+        function renderExams(data, instructorId) {
+            const tbody = document.getElementById('examsTableBody');
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align:center;padding:40px;color:#6c757d;">
+                            <div style="margin-bottom: 16px;">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                                    <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                                </svg>
+                            </div>
+                            <div style="font-size: 16px; color: #1e293b; margin-bottom: 8px;">
+                                No completed exams found
+                            </div>
+                            <div style="font-size: 14px; color: #64748b;">
+                                Exams will appear here once they are marked as "completed"
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = data.map(exam => {
+                const avgScore = exam.average_score ? exam.average_score.toFixed(1) : '0.0';
+                const submissionRate = exam.total_students > 0 
+                    ? ((exam.submitted / exam.total_students) * 100).toFixed(1) 
+                    : '0.0';
+                
+                // Color code based on average score
+                let gradeColor = '#ef4444'; // Default red for < 50%
+                if (exam.average_score >= 70) {
+                    gradeColor = '#10b981'; // Green for >= 70%
+                } else if (exam.average_score >= 50) {
+                    gradeColor = '#f59e0b'; // Orange for 50-69%
+                }
+
+                // Always include instructor_id in the URL
+                const examUrl = `/reportPerformance?examId=${exam.id}&instructor_id=${instructorId}`;
+
+                return `
+                    <tr>
+                        <td>
+                            <strong>${exam.title || 'Untitled Exam'}</strong>
+                            <div style="font-size:12px;color:#64748b;margin-top:4px">
+                                ${exam.exam_code || 'No code'}
+                            </div>
+                        </td>
+                        <td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:12px;">${exam.exam_code || 'N/A'}</code></td>
+                        <td>${formatDate(exam.date)}</td>
+                        <td>
+                            <div style="font-weight:600">${exam.course_code || 'N/A'}</div>
+                            <div style="font-size:12px;color:#64748b">${exam.course_name || ''}</div>
+                        </td>
+                        <td>${exam.total_students || 0}</td>
+                        <td>
+                            <div>${submissionRate}%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${Math.min(submissionRate, 100)}%"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-weight:600;color:${gradeColor}">${avgScore}%</div>
+                            <div style="font-size:12px;color:#64748b">
+                                ${exam.graded || 0}/${exam.submitted || 0} graded
+                            </div>
+                        </td>
+                        <td>
+                            <a href="${examUrl}" 
+                               class="action-btn" 
+                               title="View detailed performance report">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                                    <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                                </svg>
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Format date
+        function formatDate(dateStr) {
+            if (!dateStr) return 'No date';
+            try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return dateStr;
+                
+                const day = date.getDate().toString().padStart(2, '0');
+                const month = date.toLocaleString('en-US', { month: 'short' });
+                const year = date.getFullYear();
+                return `${day} ${month} ${year}`;
+            } catch (e) {
+                return dateStr;
+            }
+        }
+
+        // Filter exams based on search input
+        function filterExams() {
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            if (!search) {
+                renderExams(exams, currentInstructorId);
+                return;
+            }
+
+            const filtered = exams.filter(exam => {
+                return (
+                    (exam.title && exam.title.toLowerCase().includes(search)) ||
+                    (exam.exam_code && exam.exam_code.toLowerCase().includes(search)) ||
+                    (exam.course_name && exam.course_name.toLowerCase().includes(search)) ||
+                    (exam.course_code && exam.course_code.toLowerCase().includes(search))
+                );
+            });
+            
+            renderExams(filtered, currentInstructorId);
+            
+            // Show message if no results
+            if (filtered.length === 0 && exams.length > 0) {
+                // showMessage('info', `No exams found matching "${search}"`);
+            }
+        }
+
+        // Refresh reports
+        function refreshReports() {
+            // showMessage('info', 'Refreshing reports...');
+            loadInstructorExams();
+        }
+
+        // Auto-refresh every 5 minutes (optional)
+        // setInterval(() => {
+        //     if (document.visibilityState === 'visible') {
+        //         console.log('Auto-refreshing reports...');
+        //         loadInstructorExams();
+        //     }
+        // }, 300000); // 5 minutes
+
+        // Export data function (optional)
+        function exportToCSV() {
+            if (!exams || exams.length === 0) {
+                // showMessage('warning', 'No data to export.');
+                return;
+            }
+
+            let csv = 'Exam Title,Exam Code,Date,Course Code,Course Name,Total Students,Submitted,Graded,Average Score\n';
+            
+            exams.forEach(exam => {
+                csv += `"${exam.title || ''}","${exam.exam_code || ''}","${exam.date || ''}","${exam.course_code || ''}","${exam.course_name || ''}",${exam.total_students || 0},${exam.submitted || 0},${exam.graded || 0},${exam.average_score || 0}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `exam-reports-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+        }
+    </script>
+</body>
+</html>

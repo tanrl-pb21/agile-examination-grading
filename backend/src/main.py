@@ -11,6 +11,7 @@ from src.routers import submission
 from src.routers import grading
 from src.routers import take_exam
 from src.routers import auth
+from src.routers import report
 
 app = FastAPI()
 app.include_router(exams.router)
@@ -20,6 +21,7 @@ app.include_router(submission.router)
 app.include_router(grading.router)
 app.include_router(take_exam.router)
 app.include_router(auth.router)
+app.include_router(report.router)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -134,3 +136,13 @@ def reset_password_page(request: Request):
 @app.get("/studentCourse", response_class=HTMLResponse)
 def reset_password_page(request: Request):
     return templates.TemplateResponse("studentCourse.html", {"request": request})
+
+# Route 1: Reports list page (main dashboard)
+@app.get("/reports", response_class=HTMLResponse)
+def reports_page(request: Request):
+    return templates.TemplateResponse("examReportList.html", {"request": request})
+
+# Route 2: Individual exam performance report - THIS IS WHAT YOU NEED!
+@app.get("/reportPerformance", response_class=HTMLResponse)  # <-- ADD THIS ROUTE
+def report_performance_page(request: Request):  # Different function name
+    return templates.TemplateResponse("performanceReportDetails.html", {"request": request})
