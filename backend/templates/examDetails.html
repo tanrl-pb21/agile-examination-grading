@@ -9,118 +9,281 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios@latest/dist/axios.min.js"></script>
     <style>
-        .btn-add-option {
-            margin-top: 10px;
-            padding: 8px 16px;
-            background: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .btn-add-option:hover {
-            background: #2563eb;
-        }
-        .btn-remove-option {
-            margin-left: 8px;
-            padding: 4px 10px;
-            background: #ef4444;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            line-height: 1;
-        }
-        .btn-remove-option:hover {
-            background: #dc2626;
-        }
-        .error-message {
-            color: #ef4444;
-            font-size: 13px;
-            margin-top: 4px;
-            display: none;
-            font-weight: 500;
-        }
-        .error-message.show {
-            display: block;
-        }
-        .form-group input.error,
-        .form-group textarea.error {
-            border-color: #ef4444 !important;
-            background-color: #fef2f2 !important;
-        }
-        .option-input-row input.error {
-            border-color: #ef4444 !important;
-            background-color: #fef2f2 !important;
-        }
-        .success-message {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #10b981;
-            color: white;
-            padding: 16px 24px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 10000;
-            animation: slideIn 0.3s ease-out;
+         .answer-statistics {
+        background: white;
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-top: 20px;
+    }
+
+    .stats-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 32px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .stats-header svg {
+        color: #3b82f6;
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    .stats-header-text {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .stats-header span {
+        font-weight: 700;
+        color: #1f2937;
+        font-size: 18px;
+    }
+
+    .stats-subtitle {
+        font-size: 13px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .chart-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .bar-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background: #f9fafb;
+        border-radius: 12px;
+        border: 1px solid #f3f4f6;
+        transition: all 0.3s ease;
+    }
+
+    .bar-item:hover {
+        background: #f3f4f6;
+        border-color: #e5e7eb;
+    }
+
+    .option-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 140px;
+    }
+
+    .option-letter {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 16px;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .option-letter.correct {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .option-details {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+    }
+
+    .option-text {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1f2937;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .option-meta {
+        font-size: 12px;
+        color: #9ca3af;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .correct-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        background: #10b981;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .correct-badge svg {
+        width: 12px;
+        height: 12px;
+        stroke: white;
+        stroke-width: 3;
+    }
+
+    .bar-container {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 200px;
+    }
+
+    .bar-track {
+        flex: 1;
+        height: 28px;
+        background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 100%);
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+        border-radius: 8px;
+        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 8px;
+        min-width: 2px;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+    }
+
+    .bar-fill.correct {
+        background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+    }
+
+    .bar-fill:hover {
+        filter: brightness(1.08);
+    }
+
+    .bar-count {
+        font-weight: 700;
+        color: white;
+        font-size: 13px;
+        white-space: nowrap;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .count-label {
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 13px;
+        min-width: 45px;
+        text-align: right;
+    }
+
+    .stats-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 2px solid #e5e7eb;
+    }
+
+    .summary-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px;
+        background: #f9fafb;
+        border-radius: 10px;
+        border: 1px solid #f3f4f6;
+    }
+
+    .summary-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        flex-shrink: 0;
+        font-size: 20px;
+    }
+
+    .summary-icon.blue {
+        background: #dbeafe;
+        color: #3b82f6;
+    }
+
+    .summary-icon.green {
+        background: #dcfce7;
+        color: #10b981;
+    }
+
+    .summary-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .summary-label {
+        font-size: 12px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .summary-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    @media (max-width: 768px) {
+        .answer-statistics {
+            padding: 20px;
         }
 
-
-        .submit-badge.pending {
-            background-color: #fef3c7;
-            color: #d97706;
+        .bar-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
         }
 
-
-        .submit-badge.graded {
-            background-color: #d1fae5;
-            color: #059669;
+        .option-info {
+            width: 100%;
         }
 
-
-        .student-avatar.blue {
-            background-color: #3b82f6;
+        .bar-container {
+            width: 100%;
         }
 
-
-        .student-avatar.green {
-            background-color: #10b981;
+        .bar-track {
+            height: 24px;
         }
 
-
-        .student-avatar.purple {
-            background-color: #8b5cf6;
+        .stats-summary {
+            grid-template-columns: 1fr;
         }
-
-
-        .student-avatar.orange {
-            background-color: #f97316;
-        }
-
-
-        .student-avatar.pink {
-            background-color: #ec4899;
-        }
-
-
-        .student-avatar.teal {
-            background-color: #14b8a6;
-        }
-
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
+    }
     </style>
 </head>
 <body>
@@ -438,6 +601,29 @@
         let currentFilter = 'all';
         let selectedCorrectAnswer = 0;
         let mcqOptionsCount = 4;
+        let questionStatistics = {};
+
+
+        async function loadQuestionStatistics() {
+            if (!window.examId) return;
+            
+            try {
+                console.log('Fetching question statistics for exam:', window.examId);
+                const response = await axios.get(`/questions/exam/${window.examId}/statistics`);
+                
+                // Convert array to object for easy lookup
+                questionStatistics = {};
+                response.data.forEach(stat => {
+                    questionStatistics[stat.question_id] = stat;
+                });
+                
+                console.log('✅ Question statistics loaded:', questionStatistics);
+                
+            } catch (error) {
+                console.warn('Could not load question statistics:', error);
+                questionStatistics = {};
+            }
+        }
 
 
         // Validation helper functions
@@ -583,43 +769,43 @@
             try {
                 const examId = window.examId;
                 console.log('Fetching exam with ID:', examId);
-               
+                
                 // Verify exam ID exists
                 const examResponse = await axios.get(`/exams/${examId}`);
                 const exam = examResponse.data;
-               
+                
                 if (!exam) {
                     throw new Error('Exam ID does not exist');
                 }
-               
+                
                 const questionsResponse = await axios.get(`/questions/exam/${examId}`);
                 const questions = questionsResponse.data;
 
-
-                // Try to get submissions, but don't fail if it doesn't work
+                // Try to get submissions
                 let submissions = [];
                 try {
-                    //const submissionsResponse = await axios.get(`/submissions/exam/${examId}/students`);
                     const submissionsResponse = await axios.get(`/submissions/exam-withscore/${examId}/students`);
                     submissions = submissionsResponse.data || [];
                     console.log('Submissions data:', submissions);
                 } catch (submissionError) {
                     console.warn('Could not load submissions:', submissionError);
-                    // Continue without submissions data
                 }
-               
+                
+                // ✅ Load question statistics if exam is completed
+                if (exam.status === 'completed') {
+                    await loadQuestionStatistics();
+                }
+                
                 console.log('Exam data:', exam);
                 console.log('Questions data:', questions);
-               
+                
                 currentExam = transformExamData(exam);
                 currentExam.questions = transformQuestions(questions);
                 currentExam.submissions = transformSubmissions(submissions);
 
-
-               currentExam.totalStudents = submissions.length;
-               currentExam.submitted = submissions.filter(s => s.status === 'pending' || s.status === 'graded').length;
-               currentExam.missed = submissions.filter(s => s.status === 'missed').length;
-
+                currentExam.totalStudents = submissions.length;
+                currentExam.submitted = submissions.filter(s => s.status === 'pending' || s.status === 'graded').length;
+                currentExam.missed = submissions.filter(s => s.status === 'missed').length;
 
                 renderExamInfo();
                 renderQuestionStats();
@@ -627,7 +813,7 @@
                 renderSubmissionStats();
                 renderFilterTabs();
                 renderSubmissions();
-               
+                
             } catch (error) {
                 console.error('Error loading exam:', error);
                 if (error.response?.status === 404) {
@@ -637,7 +823,7 @@
                 }
                 window.location.href = '/examManagement';
             }
-        }
+}
 
 
 
@@ -878,70 +1064,148 @@ function transformSubmissions(submissions) {
 
 
         function renderQuestions() {
-        if (!currentExam) return;
-        const container = document.getElementById('questionsList');
-        
-        const isCompleted = currentExam.status === 'completed';
-        const hasExamStarted = checkIfExamStarted(); // Check if exam has started
-        
-        if (currentExam.questions.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;">No questions added yet</div>';
-            return;
-        }
-        
-        container.innerHTML = currentExam.questions.map((q, index) => {
-            // Don't show edit button if:
-            // 1. Exam is completed OR
-            // 2. Exam has started
-            const showEditButton = !isCompleted && !hasExamStarted;
-            
-            const editButton = showEditButton
-                ? `<button class="action-btn edit" onclick="editQuestion(${q.id}, '${q.type}')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`
-                : '';
-            
-            if (q.type === 'mcq') {
-                return `<div class="question-card">
-                    <div class="question-header">
-                        <div class="question-number">${index + 1}</div>
-                        <span class="question-type mcq">MCQ</span>
-                        <span class="question-points">${q.points} points</span>
-                        <div class="question-actions">
-                            ${editButton}
-                            <button class="action-btn delete" onclick="${showEditButton ? `deleteQuestion(${q.id})` : ''}" ${!showEditButton ? 'disabled' : ''} title="${showEditButton ? 'Delete' : 'Cannot delete after exam starts'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                        </div>
-                    </div>
-                    <div class="question-content">
-                        <p class="question-text">${q.question}</p>
-                        <div class="options-list">
-                            ${q.options.map((opt, i) => `<div class="option ${i === q.correctAnswer ? 'correct' : ''}"><span class="option-radio ${i === q.correctAnswer ? 'checked' : ''}">${i === q.correctAnswer ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span><span>${opt}</span></div>`).join('')}
-                        </div>
-                    </div>
-                </div>`;
-            } else {
-                return `<div class="question-card">
-                    <div class="question-header">
-                        <div class="question-number">${index + 1}</div>
-                        <span class="question-type essay">Essay</span>
-                        <span class="question-points">${q.points} points</span>
-                        <div class="question-actions">
-                            ${editButton}
-                            <button class="action-btn delete" onclick="${showEditButton ? `deleteQuestion(${q.id})` : ''}" ${!showEditButton ? 'disabled' : ''} title="${showEditButton ? 'Delete' : 'Cannot delete after exam starts'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                        </div>
-                    </div>
-                    <div class="question-content">
-                        <p class="question-text">${q.question}</p>
-                        ${q.rubric ? `<div class="rubric-box"><div class="rubric-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Rubric</span></div><p class="rubric-text">${q.rubric}</p></div>` : ''}
-                    </div>
-                </div>`;
-            }
-        }).join('');
-        
-        // Style disabled delete buttons
-        document.querySelectorAll('.action-btn.delete[disabled]').forEach(btn => {
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'not-allowed';
-        });
+    if (!currentExam) return;
+    const container = document.getElementById('questionsList');
+    
+    const isCompleted = currentExam.status === 'completed';
+    const hasExamStarted = checkIfExamStarted();
+    
+    if (currentExam.questions.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:#6c757d;">No questions added yet</div>';
+        return;
     }
+    
+    container.innerHTML = currentExam.questions.map((q, index) => {
+        const showEditButton = !isCompleted && !hasExamStarted;
+        
+        const editButton = showEditButton
+            ? `<button class="action-btn edit" onclick="editQuestion(${q.id}, '${q.type}')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`
+            : '';
+        
+        if (q.type === 'mcq') {
+            // Get statistics for this question
+            const stats = questionStatistics[q.id];
+            const showStats = isCompleted && stats;
+            
+            // Build statistics chart HTML
+            let statsHTML = '';
+            if (showStats && stats) {
+    const maxCount = Math.max(...stats.options.map(opt => opt.student_count), 1);
+    const totalResponses = stats.options.reduce((sum, opt) => sum + opt.student_count, 0);
+    const correctCount = stats.options.find(opt => opt.is_correct)?.student_count || 0;
+    const correctPercentage = totalResponses > 0 ? Math.round((correctCount / totalResponses) * 100) : 0;
+
+    statsHTML = `
+        <div class="answer-statistics">
+            <div class="stats-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="20" x2="12" y2="10"/>
+                    <line x1="18" y1="20" x2="18" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="16"/>
+                </svg>
+                <div class="stats-header-text">
+                    <span>Student Responses</span>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                ${stats.options.map((opt, optIndex) => {
+                    const percentage = maxCount > 0 ? (opt.student_count / maxCount * 100) : 0;
+                    const isCorrect = opt.is_correct;
+                    const letter = String.fromCharCode(65 + optIndex);
+                    
+                    return `
+                        <div class="bar-item">
+                            <div class="option-info">
+                                <div class="option-letter ${isCorrect ? 'correct' : ''}">${letter}</div>
+                                <div class="option-details">
+                                    <div class="option-text" title="${opt.option_text}">${opt.option_text}</div>
+                                    <div class="option-meta">
+                                        ${isCorrect ? `
+                                            <div class="correct-badge">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                    <polyline points="20 6 9 17 4 12"/>
+                                                </svg>
+                                            </div>
+                                            <span>Correct Answer</span>
+                                        ` : `<span>${opt.student_count} ${opt.student_count === 1 ? 'response' : 'responses'}</span>`}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bar-container">
+                                <div class="bar-track">
+                                    <div class="bar-fill ${isCorrect ? 'correct' : ''}" style="width: ${percentage}%;">
+                                        ${opt.student_count > 0 ? `<span class="bar-count">${opt.student_count}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="count-label">${opt.student_count}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            <div class="stats-summary">
+                <div class="summary-card">
+                    <div class="summary-icon blue">📊</div>
+                    <div class="summary-content">
+                        <div class="summary-label">Total Responses</div>
+                        <div class="summary-value">${totalResponses}</div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon green">✓</div>
+                    <div class="summary-content">
+                        <div class="summary-label">Correct Answers</div>
+                        <div class="summary-value">${correctCount} (${correctPercentage}%)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+            
+            return `<div class="question-card">
+                <div class="question-header">
+                    <div class="question-number">${index + 1}</div>
+                    <span class="question-type mcq">MCQ</span>
+                    <span class="question-points">${q.points} points</span>
+                    <div class="question-actions">
+                        ${editButton}
+                        <button class="action-btn delete" onclick="${showEditButton ? `deleteQuestion(${q.id})` : ''}" ${!showEditButton ? 'disabled' : ''} title="${showEditButton ? 'Delete' : 'Cannot delete after exam starts'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                    </div>
+                </div>
+                <div class="question-content">
+                    <p class="question-text">${q.question}</p>
+                    <div class="options-list">
+                        ${q.options.map((opt, i) => `<div class="option ${i === q.correctAnswer ? 'correct' : ''}"><span class="option-radio ${i === q.correctAnswer ? 'checked' : ''}">${i === q.correctAnswer ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</span><span>${opt}</span></div>`).join('')}
+                    </div>
+                    ${statsHTML}
+                </div>
+            </div>`;
+        } else {
+            return `<div class="question-card">
+                <div class="question-header">
+                    <div class="question-number">${index + 1}</div>
+                    <span class="question-type essay">Essay</span>
+                    <span class="question-points">${q.points} points</span>
+                    <div class="question-actions">
+                        ${editButton}
+                        <button class="action-btn delete" onclick="${showEditButton ? `deleteQuestion(${q.id})` : ''}" ${!showEditButton ? 'disabled' : ''} title="${showEditButton ? 'Delete' : 'Cannot delete after exam starts'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                    </div>
+                </div>
+                <div class="question-content">
+                    <p class="question-text">${q.question}</p>
+                    ${q.rubric ? `<div class="rubric-box"><div class="rubric-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Rubric</span></div><p class="rubric-text">${q.rubric}</p></div>` : ''}
+                </div>
+            </div>`;
+        }
+    }).join('');
+    
+    // Style disabled delete buttons
+    document.querySelectorAll('.action-btn.delete[disabled]').forEach(btn => {
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+    });
+}
 
 
         function renderSubmissionStats() {

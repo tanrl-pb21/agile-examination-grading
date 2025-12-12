@@ -3480,3 +3480,106 @@ tbody tr:hover {
         align-self: flex-end;
     }
 }
+
+/* Add these styles to the <style> section in examDetails.html */
+
+.answer-statistics {
+    margin-top: 20px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.stats-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    color: #334155;
+    font-size: 14px;
+}
+
+.stats-header svg {
+    color: #3b82f6;
+}
+
+.stats-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stat-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.stat-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 200px;
+    flex-shrink: 0;
+}
+
+.option-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: #e2e8f0;
+    color: #475569;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.option-text-short {
+    font-size: 13px;
+    color: #64748b;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stat-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    position: relative;
+}
+
+.stat-bar {
+    height: 32px;
+    background: #3b82f6;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    min-width: 2px;
+    position: relative;
+}
+
+.stat-count {
+    font-weight: 600;
+    color: #334155;
+    font-size: 14px;
+    min-width: 30px;
+    text-align: right;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+    .stat-label {
+        min-width: 150px;
+    }
+    
+    .option-text-short {
+        max-width: 100px;
+    }
+}
