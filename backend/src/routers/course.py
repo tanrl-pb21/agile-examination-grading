@@ -14,13 +14,45 @@
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException,Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
 from src.services.course_service import CourseService
+import jwt
+import os
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 service = CourseService()
+security = HTTPBearer()
+
+# JWT Configuration - MUST MATCH auth router
+JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this-in-production")
+JWT_ALGORITHM = "HS256"
+
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
+    """
+    Extract user_id from JWT token in Authorization header.
+    Raises HTTPException if token is invalid or expired.
+    """
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("user_id")
+        
+        if not user_id:
+            raise HTTPException(status_code=401, detail="user_id not found in token")
+        
+        return int(user_id)
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        print(f"❌ ERROR extracting user_id: {str(e)}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
 
 
 # Pydantic models for request/response
@@ -57,6 +89,31 @@ def get_all_courses(status: Optional[str] = None):
         courses = service.get_all_courses(status)
         return courses
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/my-courses")
+def get_my_courses(
+    user_id: int = Depends(get_current_user_id),
+    status: Optional[str] = None
+):
+    """
+    Get all courses assigned to the logged-in instructor.
+    Requires valid JWT token in Authorization header.
+    Optional filter by status (active/inactive).
+    """
+    try:
+        print(f"📋 GET /courses/my-courses - Fetching courses for instructor_id={user_id}")
+        
+        # ✅ Get only courses assigned to this instructor
+        courses = service.get_instructor_courses(user_id, status)
+        
+        print(f"✅ Returning {len(courses) if courses else 0} courses for instructor {user_id}")
+        return courses
+        
+    except Exception as e:
+        print(f"❌ ERROR in get_my_courses: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 

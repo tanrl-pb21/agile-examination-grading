@@ -103,10 +103,10 @@
                             <th class="sortable" onclick="sortTable('title')">TITLE</th>
                             <th class="sortable" onclick="sortTable('exam_code')">EXAM ID</th>
                             <th class="sortable" onclick="sortTable('date')">DATE</th>
-                            <th class="sortable" onclick="sortTable('start_time')">START TIME</th>
-                            <th class="sortable" onclick="sortTable('end_time')">END TIME</th>
-                            <th class="sortable" onclick="sortTable('duration')">DURATION</th>
-                            <th class="sortable" onclick="sortTable('status')">STATUS</th>
+                            <th>START TIME</th>
+                            <th>END TIME</th>
+                            <th>DURATION</th>
+                            <th>STATUS</th>
                             <th>ACTIONS</th>
                         </tr>
                     </thead>
@@ -183,10 +183,31 @@
     </div>
 
     <script>
+        // Setup axios to include JWT token in all requests
         document.addEventListener("DOMContentLoaded", function () {
+
+           
+            // Get token from localStorage
+            const token = localStorage.getItem('auth_token');
+            
+            if (!token) {
+                console.warn('⚠️ No token found. Redirecting to login...');
+                window.location.href = '/login';
+                return;
+            }
+            
+            // ✅ Add token to all axios requests
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            
+            console.log('✅ JWT token configured in axios');
+             console.log('Auth header:', axios.defaults.headers.common['Authorization']);
+            console.log('Exam ID:', examId);
+
+            // Now call your existing functions
             checkAccess(["teacher"]);
             updateSidebarUserInfo();
         });
+
         let exams = [];
         let courses = [];
 
@@ -345,7 +366,7 @@
             try {
                 console.log('Fetching courses from /courses...');
                 
-                const res = await axios.get('/courses', {
+                const res = await axios.get('/courses/my-courses', {
                     timeout: 10000,  // 5 seconds instead of 30
                     headers: {
                         'Accept': 'application/json'

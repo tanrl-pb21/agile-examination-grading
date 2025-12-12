@@ -209,3 +209,67 @@ def delete_question(question_id: int):
         return {"message": "Question deleted successfully"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/exam/{exam_id}/statistics")
+def get_exam_question_statistics(exam_id: int):
+    """
+    Get statistics for all MCQ questions in an exam.
+    Returns how many students selected each option.
+    """
+    try:
+        sql = """
+            SELECT 
+                q.id as question_id,
+                q.question_text,
+                qo.id as option_id,
+                qo.option_text,
+                qo.is_correct,
+                COUNT(DISTINCT sa.submission_id) as student_count
+            FROM question q
+            INNER JOIN "questionOption" qo ON q.id = qo.question_id
+            LEFT JOIN "submissionAnswer" sa ON qo.id = sa.selected_option_id
+            WHERE q.exam_id = %s 
+            AND q.question_type = 'mcq'
+            GROUP BY q.id, q.question_text, qo.id, qo.option_text, qo.is_correct
+            ORDER BY q.id, qo.id;
+        """
+        
+        from src.db import get_conn
+        from psycopg.rows import dict_row
+        
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, (exam_id,))
+                rows = cur.fetchall()
+        
+        # Group by question
+        questions_stats = {}
+        for row in rows:
+            question_id = row['question_id']
+            
+            if question_id not in questions_stats:
+                questions_stats[question_id] = {
+                    'question_id': question_id,
+                    'question_text': row['question_text'],
+                    'options': []
+                }
+            
+            questions_stats[question_id]['options'].append({
+                'option_id': row['option_id'],
+                'option_text': row['option_text'],
+                'is_correct': row['is_correct'],
+                'student_count': row['student_count']
+            })
+        
+        # Convert to list
+        result = list(questions_stats.values())
+        
+        print(f"✅ Returning statistics for {len(result)} MCQ questions in exam {exam_id}")
+        return result
+        
+    except Exception as e:
+        print(f"❌ ERROR in get_exam_question_statistics: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
